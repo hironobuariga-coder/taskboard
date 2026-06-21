@@ -1354,7 +1354,7 @@ export default function App() {
 
         {/* ビュー */}
         {view === "kanban" && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {STATUSES.map(status => (
               <KanbanColumn
                 key={status}
@@ -1365,6 +1365,33 @@ export default function App() {
                 onDrop={handleKanbanDrop}
               />
             ))}
+            {/* 付箋メモ列（4列目） */}
+            <div className="flex flex-col rounded-2xl border-t-2 border-yellow-500/60 bg-yellow-900/10 p-4 min-h-[320px]">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold tracking-wide text-yellow-300">📌 メモ</h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs bg-slate-700 text-slate-300 rounded-full px-2 py-0.5 font-mono">{notes.length}</span>
+                  <button
+                    onClick={handleAddNote}
+                    className="text-xs bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 border border-yellow-500/30 px-2 py-1 rounded-lg transition-colors font-medium"
+                    title="付箋を追加"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 flex-1 overflow-y-auto">
+                {notes.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <p className="text-xs text-slate-600 text-center">＋ ボタンで<br/>付箋を追加</p>
+                  </div>
+                ) : (
+                  notes.map(n=>(
+                    <StickyNote key={n.id} note={n} onEdit={handleEditNote} onDelete={handleDeleteNote} onColorChange={handleColorNote}/>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         )}
         {view === "list" && (
@@ -1374,15 +1401,29 @@ export default function App() {
           <Dashboard tasks={tasks} meetings={meetings} capacity={capacity} onCapacityChange={setCapacity}/>
         )}
 
-        {/* 付箋メモエリア（ダッシュボード以外） */}
-        {view !== "dashboard" && (
-          <StickyBoard
-            notes={notes}
-            onAdd={handleAddNote}
-            onEdit={handleEditNote}
-            onDelete={handleDeleteNote}
-            onColorChange={handleColorNote}
-          />
+        {/* 付箋メモエリア（リスト・ダッシュボード以外） */}
+        {view === "list" && (
+          <div className="flex flex-col rounded-2xl border-t-2 border-yellow-500/60 bg-yellow-900/10 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold tracking-wide text-yellow-300">📌 メモ</h2>
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-slate-700 text-slate-300 rounded-full px-2 py-0.5 font-mono">{notes.length}</span>
+                <button onClick={handleAddNote} className="flex items-center gap-1 text-xs bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 border border-yellow-500/30 px-2.5 py-1.5 rounded-lg transition-colors font-medium">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>
+                  付箋を追加
+                </button>
+              </div>
+            </div>
+            {notes.length === 0 ? (
+              <p className="text-xs text-slate-600 text-center py-4">付箋がありません</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {notes.map(n=>(
+                  <StickyNote key={n.id} note={n} onEdit={handleEditNote} onDelete={handleDeleteNote} onColorChange={handleColorNote}/>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* 会議一覧（ダッシュボード以外で折り畳み表示） */}
