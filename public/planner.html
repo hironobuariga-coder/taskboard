@@ -211,7 +211,7 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
   <button class="nav-link" onclick="showPage('timer')"><i class="ti ti-clock"></i> タイマー</button>
   <button class="nav-link" onclick="showPage('log')"><i class="ti ti-notebook"></i> 実績ログ</button>
   <div class="nav-right">
-    <span class="nav-ext" id="sync-badge" style="display:none"><i class="ti ti-calendar-check" style="font-size:14px"></i> <span id="sync-text"></span></span>
+    <span class="nav-ext" id="nav-sync-badge" style="display:none"><i class="ti ti-calendar-check" style="font-size:14px"></i> <span id="nav-sync-text"></span></span>
   </div>
 </nav>
 
@@ -220,12 +220,36 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 
 <!-- ===== PLANNER ===== -->
 <div id="page-planner" class="page active">
-  <div class="url-bar">
-    <input type="text" id="ics-url" placeholder="Outlook ICS URL (webcal:// または https://)" />
-    <button onclick="loadICS()"><i class="ti ti-refresh"></i> 読み込む</button>
-    <button onclick="loadDemo()" style="font-size:11px;color:var(--text2)">デモ</button>
+  <div id="ics-panel" style="background:var(--bg);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:12px 16px;margin-bottom:1rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button id="btn-outlook" onclick="openOutlook()" style="background:var(--accent);color:#fff;border-color:var(--accent);font-size:13px">
+          <i class="ti ti-calendar-event"></i> Outlookを開く
+        </button>
+        <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0">
+          <input type="file" id="ics-file" accept=".ics" onchange="loadICSFile(this)" style="display:none">
+          <span class="btn-primary" onclick="document.getElementById('ics-file').click()" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:var(--r-md);font-size:13px;background:var(--bg2);color:var(--text);border:0.5px solid var(--border2)">
+            <i class="ti ti-file-import"></i> ICSを取り込む
+          </span>
+        </label>
+        <button onclick="loadDemo()" style="font-size:12px;color:var(--text2);padding:4px 10px">
+          <i class="ti ti-test-pipe"></i> デモ
+        </button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div id="last-imported" style="font-size:11px;color:var(--text3)"></div>
+        <span id="sync-badge" style="display:none;font-size:11px;background:var(--accent-bg);color:var(--accent-text);padding:2px 10px;border-radius:var(--r-md);border:0.5px solid var(--border2)">
+          <i class="ti ti-calendar-check" style="font-size:13px"></i> <span id="sync-text"></span>
+        </span>
+      </div>
+    </div>
+    <div id="ics-url-row" style="margin-top:10px;display:flex;gap:6px;align-items:center">
+      <i class="ti ti-link" style="font-size:13px;color:var(--text3);flex-shrink:0"></i>
+      <input type="text" id="ics-url" placeholder="OutlookのICSダウンロードURL（登録しておくと「Outlookを開く」で直接ジャンプ）"
+        style="flex:1;font-size:12px;background:var(--bg2)" oninput="saveICSUrl()" />
+    </div>
+    <div class="status-msg" id="ics-status" style="margin-top:6px;margin-bottom:0"></div>
   </div>
-  <div class="status-msg" id="ics-status"></div>
 
   <div class="metric-grid" id="planner-metrics"></div>
 
@@ -513,23 +537,43 @@ function setStatus(msg,type){
   if(type==='loading')el.innerHTML='<div class="spinner"></div>'+msg;
   else el.innerHTML='<i class="ti ti-'+(type==='ok'?'circle-check':'alert-circle')+'" style="font-size:14px"></i>'+msg;
 }
-async function loadICS(){
-  let url=document.getElementById('ics-url').value.trim();
-  if(!url){setStatus('URLを入力してください','err');return;}
-  if(url.startsWith('webcal://'))url='https://'+url.slice(9);
+function saveICSUrl(){
+  const url=document.getElementById('ics-url').value.trim();
+  if(url) localStorage.setItem('ics-registered-url',url);
+}
+function loadSavedUrl(){
+  const url=localStorage.getItem('ics-registered-url')||'';
+  document.getElementById('ics-url').value=url;
+}
+function openOutlook(){
+  const url=document.getElementById('ics-url').value.trim();
+  if(!url){setStatus('URLを入力・登録してください','err');return;}
+  window.open(url,'_blank');
+  setStatus('Outlookを開きました。ICSをダウンロード後「ICSを取り込む」を押してください','ok');
+}
+function loadICSFile(input){
+  const file=input.files[0];
+  if(!file){return;}
   setStatus('読み込んでいます…','loading');
-  try{
-    const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url));
-    if(!r.ok)throw new Error();
-    const data=await r.json();
-    if(!data.contents)throw new Error();
-    outlookEvs=parseICS(data.contents);
-    if(!outlookEvs.length)throw new Error('予定が見つかりません');
-    document.getElementById('sync-badge').style.display='';
-    document.getElementById('sync-text').textContent='Outlook '+outlookEvs.length+'件';
-    setStatus(outlookEvs.length+'件を取得しました','ok');
-    renderAll();
-  }catch(e){setStatus('取得に失敗しました。デモボタンをお試しください。','err');}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const txt=e.target.result;
+      outlookEvs=parseICS(txt);
+      if(!outlookEvs.length)throw new Error('予定が見つかりません');
+      const now=new Date();
+      const ts=`${now.getMonth()+1}/${now.getDate()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      localStorage.setItem('ics-last-imported',ts);
+      document.getElementById('last-imported').textContent='最終取り込み: '+ts;
+      document.getElementById('sync-badge').style.display='';
+      document.getElementById('sync-text').textContent='Outlook '+outlookEvs.length+'件';
+      setStatus(outlookEvs.length+'件の予定を取り込みました','ok');
+      renderAll();
+      input.value='';
+    }catch(err){setStatus('ICSファイルの読み込みに失敗しました','err');}
+  };
+  reader.onerror=()=>setStatus('ファイルの読み込みに失敗しました','err');
+  reader.readAsText(file,'UTF-8');
 }
 function loadDemo(){
   const now=new Date();
@@ -932,6 +976,9 @@ function renderLogMetrics(){
 
 // ===== INIT =====
 loadTBTasks();
+loadSavedUrl();
+const _li=localStorage.getItem('ics-last-imported');
+if(_li) document.getElementById('last-imported').textContent='最終取り込み: '+_li;
 buildPresets([5,10,25,45,60],25,'w');
 drawTimer(1);
 renderNextQ();
