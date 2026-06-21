@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Day Planner</title>
+<title>Day Planner - 一日の計画管理</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
@@ -611,7 +611,7 @@ function populateTimerTaskSelect(){
   sel.innerHTML='<option value="">— タスクを選択 —</option>';
   // TaskBoard tasks
   if(tbTasks.length){
-    const g=document.createElement('optgroup');g.label='TaskBoard';
+    const g=document.createElement('optgroup');g.label='TaskBoard（連携）';
     tbTasks.forEach(t=>{const o=document.createElement('option');o.value='tb:'+t.id;o.text=t.title;g.appendChild(o);});
     sel.appendChild(g);
   }
@@ -703,7 +703,7 @@ function renderTimeline(){
       const cs=catStyle(e.category||'meeting',e.source);
       const blk=document.createElement('div');blk.className='ev-block';
       blk.style.cssText=`background:${cs.bg};border-left-color:${cs.border};color:${cs.text}`;
-      const srcLabel=e.source==='outlook'?'Outlook':e.source==='taskboard'?'TaskBoard':'追加済み';
+      const srcLabel=e.source==='outlook'?'Outlook予定':e.source==='taskboard'?'TB連携':'ローカル';
       blk.innerHTML=`<div class="ev-title">${e.summary||'無題'} <span style="font-size:9px;padding:1px 4px;border-radius:2px;background:${cs.border}22;color:${cs.text}">${srcLabel}</span></div>
         <div class="ev-meta">${fmtTime(s)}–${fmtTime(en)} (${fmtMins(dur)})${e.location?' · '+e.location:''}</div>
         ${e.note?`<div class="ev-note">${e.note}</div>`:''}`;
@@ -1320,6 +1320,8 @@ buildCatGuide('q-guide');
 renderDayMemo();
 renderTodayWH();
 renderVsPanel();
+updateClock();
+setInterval(()=>{if(tState==='idle'||tState==='done')updateClock();},1000);
 </script>
 </body>
 </html>

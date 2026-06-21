@@ -11,6 +11,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 
 const STATUSES = ["Todo", "In Progress", "Done"];
 const PRIORITIES = ["High", "Medium", "Low"];
+const STATUS_LABEL = {"Todo":"未着手", "In Progress":"進行中", "Done":"完了"};
+const PRI_LABEL = {"High":"高", "Medium":"中", "Low":"低"};
 
 const PRI = {
   High:   { ring: "border-l-red-400",    badge: "bg-red-950/60 text-red-300 border border-red-500/30",    dot: "bg-red-400"    },
@@ -67,14 +69,14 @@ function Modal({ task, onSave, onClose }) {
               <label className="mb-1 block text-[11px] font-medium text-[#9d9bbf]">ステータス</label>
               <select value={form.status} onChange={up("status")}
                 className="w-full rounded-lg border border-violet-500/20 bg-[#25253a] px-3 py-2 text-[13px] text-[#e2e0ff] outline-none focus:border-violet-400/50">
-                {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABEL[s]||s}</option>)}
               </select>
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-medium text-[#9d9bbf]">優先度</label>
               <select value={form.priority} onChange={up("priority")}
                 className="w-full rounded-lg border border-violet-500/20 bg-[#25253a] px-3 py-2 text-[13px] text-[#e2e0ff] outline-none focus:border-violet-400/50">
-                {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                {PRIORITIES.map(p => <option key={p} value={p}>{PRI_LABEL[p]||p}</option>)}
               </select>
             </div>
           </div>
@@ -132,7 +134,7 @@ function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnd, isDragging }
       </div>
       {task.description && <p className="mb-2 text-[11px] leading-relaxed text-[#9d9bbf] line-clamp-2">{task.description}</p>}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${PRI[task.priority]?.badge || ""}`}>{task.priority}</span>
+        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${PRI[task.priority]?.badge || ""}`}>{PRI_LABEL[task.priority]||task.priority}</span>
         {task.dueDate && (
           <span className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] ${overdue ? "bg-red-950/60 text-red-300 border border-red-500/30" : "bg-[#25253a] text-[#9d9bbf] border border-violet-500/10"}`}>
             <Icon name="calendar" size={10} />{task.dueDate}
@@ -166,7 +168,7 @@ function KanbanView({ tasks, onEdit, onDelete, onMove }) {
             onDrop={() => { if(dragging) onMove(dragging, st); setDragging(null); setOver(null); }}
           >
             <div className="mb-3 flex items-center justify-between">
-              <span className={`text-[13px] font-semibold ${col.header}`}>{st}</span>
+              <span className={`text-[13px] font-semibold ${col.header}`}>{STATUS_LABEL[st]||st}</span>
               <span className="rounded-full bg-[#25253a] border border-violet-500/10 px-2 py-0.5 text-[11px] text-[#9d9bbf]">{colTasks.length}</span>
             </div>
             {colTasks.map(t => (
@@ -204,11 +206,11 @@ function ListView({ tasks, onEdit, onDelete, onStatusChange }) {
                 <select value={t.status} onClick={e => e.stopPropagation()}
                   onChange={e => onStatusChange(t.id, e.target.value)}
                   className="rounded-lg border border-violet-500/20 bg-[#25253a] px-2 py-1 text-[11px] text-[#e2e0ff] outline-none focus:border-violet-400/50">
-                  {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABEL[s]||s}</option>)}
                 </select>
               </td>
               <td className="px-4 py-3">
-                <span className={`rounded px-2 py-0.5 text-[10px] font-medium ${PRI[t.priority]?.badge || ""}`}>{t.priority}</span>
+                <span className={`rounded px-2 py-0.5 text-[10px] font-medium ${PRI[t.priority]?.badge || ""}`}>{PRI_LABEL[t.priority]||t.priority}</span>
               </td>
               <td className="px-4 py-3">
                 {t.dueDate ? (
@@ -406,7 +408,7 @@ export default function App() {
               className="w-full rounded-lg pl-8 pr-3 py-1.5 text-[13px] outline-none"
               style={{background:"#25253a", border:"0.5px solid rgba(124,111,205,0.2)", color:"#e2e0ff"}} />
           </div>
-          {[["",  "すべて", "filterStatus"], ...STATUSES.map(s=>[s,s,"filterStatus"])].filter((_,i)=>i===0||i<4).map(([v,l]) => (
+          {[["",  "すべて", "filterStatus"], ...STATUSES.map(s=>[s,STATUS_LABEL[s]||s,"filterStatus"])].filter((_,i)=>i===0||i<4).map(([v,l]) => (
             <button key={v+l} onClick={() => setFilterStatus(v)}
               className="rounded-lg px-3 py-1.5 text-[12px] transition-colors"
               style={{
@@ -416,7 +418,7 @@ export default function App() {
               }}>{l}</button>
           ))}
           <div className="w-px h-5" style={{background:"rgba(124,111,205,0.15)"}} />
-          {[["","すべて"],...PRIORITIES.map(p=>[p,p])].map(([v,l]) => (
+          {[["","すべて"],...PRIORITIES.map(p=>[p,PRI_LABEL[p]||p])].map(([v,l]) => (
             <button key={v+l} onClick={() => setFilterPri(v)}
               className="rounded-lg px-3 py-1.5 text-[12px] transition-colors"
               style={{
