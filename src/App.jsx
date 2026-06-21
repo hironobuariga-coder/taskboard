@@ -149,34 +149,50 @@ function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnd, isDragging }
   );
 }
 
-// ===== KANBAN (2列グリッド + 列内並び替え対応) =====
+// ===== KANBAN =====
+// overInfo: { id: カードID, pos: "before"|"after" } でドロップ位置を管理
 function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortDir }) {
   const [draggingId, setDraggingId] = useState(null);
-  const [overCol, setOverCol] = useState(null);
-  const [overCardId, setOverCardId] = useState(null);
+  const [overInfo, setOverInfo] = useState(null); // {col, cardId, pos}
 
   const sortTasks = ts => {
     const arr = [...ts];
     const priOrder = {"High":0,"Medium":1,"Low":2};
-    if(sortKey === "priority") arr.sort((a,b) => sortDir==="asc" ? priOrder[a.priority]-priOrder[b.priority] : priOrder[b.priority]-priOrder[a.priority]);
-    else if(sortKey === "title") arr.sort((a,b) => sortDir==="asc" ? a.title.localeCompare(b.title,"ja") : b.title.localeCompare(a.title,"ja"));
-    else if(sortKey === "dueDate") arr.sort((a,b) => { const da=a.dueDate||"9999",db=b.dueDate||"9999"; return sortDir==="asc"?da.localeCompare(db):db.localeCompare(da); });
-    else if(sortKey === "createdAt") arr.sort((a,b) => sortDir==="asc" ? (a.createdAt||0)-(b.createdAt||0) : (b.createdAt||0)-(a.createdAt||0));
-    else arr.sort((a,b) => (a.order??0) - (b.order??0));
+    if(sortKey==="priority") arr.sort((a,b)=>sortDir==="asc"?priOrder[a.priority]-priOrder[b.priority]:priOrder[b.priority]-priOrder[a.priority]);
+    else if(sortKey==="title") arr.sort((a,b)=>sortDir==="asc"?a.title.localeCompare(b.title,"ja"):b.title.localeCompare(a.title,"ja"));
+    else if(sortKey==="dueDate") arr.sort((a,b)=>{const da=a.dueDate||"9999",db=b.dueDate||"9999";return sortDir==="asc"?da.localeCompare(db):db.localeCompare(da);});
+    else if(sortKey==="createdAt") arr.sort((a,b)=>sortDir==="asc"?(a.createdAt||0)-(b.createdAt||0):(b.createdAt||0)-(a.createdAt||0));
+    else arr.sort((a,b)=>(a.order??0)-(b.order??0));
     return arr;
   };
 
-  const handleDrop = (e, st, targetId) => {
+  const getPos = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+  };
+
+  const handleCardDragOver = (e, st, cardId) => {
+    e.preventDefault(); e.stopPropagation();
+    setOverInfo({ col: st, cardId, pos: getPos(e) });
+  };
+
+  const handleColDragOver = (e, st) => {
     e.preventDefault();
-    if(!draggingId || draggingId === targetId) { setDraggingId(null); setOverCol(null); setOverCardId(null); return; }
+    if(!overInfo || overInfo.col !== st) setOverInfo({ col: st, cardId: null, pos: "after" });
+  };
+
+  const handleDrop = (e, st, cardId) => {
+    e.preventDefault(); e.stopPropagation();
+    if(!draggingId) { setOverInfo(null); return; }
     const dragTask = tasks.find(t => t.id === draggingId);
-    if(!dragTask) return;
+    if(!dragTask || draggingId === cardId) { setOverInfo(null); setDraggingId(null); return; }
+    const pos = cardId ? getPos(e) : "after";
     if(dragTask.status !== st) {
-      onMove(draggingId, st, targetId);
+      onMove(draggingId, st, cardId, pos);
     } else {
-      onReorder(draggingId, targetId, st);
+      onReorder(draggingId, cardId, pos, st);
     }
-    setDraggingId(null); setOverCol(null); setOverCardId(null);
+    setOverInfo(null); setDraggingId(null);
   };
 
   return (
@@ -186,30 +202,38 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
         const colTasks = sortTasks(tasks.filter(t => t.status === st));
         return (
           <div key={st}
-            className={`min-h-[200px] rounded-xl border ${col.accent} ${col.bg} p-3 transition-colors
-              ${overCol === st && !overCardId ? "ring-2 ring-violet-400/40" : ""}`}
-            onDragOver={e => { e.preventDefault(); setOverCol(st); }}
-            onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)){setOverCol(null);setOverCardId(null);} }}
+            className={`min-h-[200px] rounded-xl border ${col.accent} ${col.bg} p-3 transition-colors`}
+            onDragOver={e => handleColDragOver(e, st)}
+            onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(null); }}
             onDrop={e => handleDrop(e, st, null)}
           >
             <div className="mb-2 flex items-center justify-between">
               <span className={`text-[13px] font-semibold ${col.header}`}>{STATUS_LABEL[st]||st}</span>
               <span className="rounded-full bg-[#25253a] border border-violet-500/10 px-2 py-0.5 text-[11px] text-[#9d9bbf]">{colTasks.length}</span>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {colTasks.map(t => (
-                <div key={t.id}
-                  className={`rounded-md transition-all ${overCardId===t.id && draggingId!==t.id ? "ring-2 ring-violet-400/60 ring-offset-1 ring-offset-transparent" : ""}`}
-                  onDragOver={e => { e.preventDefault(); e.stopPropagation(); setOverCardId(t.id); }}
-                  onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverCardId(null); }}
-                  onDrop={e => { e.stopPropagation(); handleDrop(e, st, t.id); }}
-                >
-                  <TaskCard task={t} onEdit={onEdit} onDelete={onDelete}
-                    onDragStart={id => { setDraggingId(id); setOverCol(st); }}
-                    onDragEnd={() => { setDraggingId(null); setOverCol(null); setOverCardId(null); }}
-                    isDragging={draggingId === t.id} />
-                </div>
-              ))}
+            <div className="flex flex-col gap-1.5">
+              {colTasks.map(t => {
+                const isOver = overInfo && overInfo.cardId === t.id && draggingId !== t.id;
+                return (
+                  <div key={t.id}
+                    style={{
+                      borderTop: isOver && overInfo.pos==="before" ? "2px solid #7c6fcd" : "2px solid transparent",
+                      borderBottom: isOver && overInfo.pos==="after" ? "2px solid #7c6fcd" : "2px solid transparent",
+                    }}
+                    onDragOver={e => handleCardDragOver(e, st, t.id)}
+                    onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(o => o?.cardId===t.id ? null : o); }}
+                    onDrop={e => handleDrop(e, st, t.id)}
+                  >
+                    <TaskCard task={t} onEdit={onEdit} onDelete={onDelete}
+                      onDragStart={id => { setDraggingId(id); }}
+                      onDragEnd={() => { setDraggingId(null); setOverInfo(null); }}
+                      isDragging={draggingId === t.id} />
+                  </div>
+                );
+              })}
+              {overInfo && overInfo.col===st && !overInfo.cardId && (
+                <div style={{height:"2px", background:"#7c6fcd", borderRadius:"1px", margin:"2px 0"}} />
+              )}
             </div>
           </div>
         );
@@ -384,30 +408,33 @@ export default function App() {
 
   const del = id => setTasks(ts => ts.filter(t => t.id !== id));
 
-  const move = (id, status, targetId) => {
+  const move = (id, status, targetId, pos) => {
     setTasks(ts => {
       const colTasks = ts.filter(t => t.status === status).sort((a,b) => (a.order??0)-(b.order??0));
-      const insertIdx = targetId ? colTasks.findIndex(t => t.id === targetId) : colTasks.length;
-      const baseOrder = insertIdx >= 0 ? insertIdx : colTasks.length;
-      return ts.map(t => t.id===id ? {...t, status, order: baseOrder - 0.5} : t)
-               .map((t,_,arr) => {
-                 if(t.status !== status) return t;
-                 const sorted = [...arr].filter(x=>x.status===status).sort((a,b)=>(a.order??0)-(b.order??0));
-                 const idx = sorted.findIndex(x=>x.id===t.id);
-                 return {...t, order: idx};
-               });
+      let insertIdx = targetId ? colTasks.findIndex(t => t.id === targetId) : colTasks.length;
+      if(pos === "after" && insertIdx >= 0) insertIdx += 1;
+      const baseOrder = insertIdx >= 0 ? insertIdx - 0.5 : colTasks.length;
+      const updated = ts.map(t => t.id===id ? {...t, status, order: baseOrder} : t);
+      const newCol = updated.filter(t => t.status === status).sort((a,b) => (a.order??0)-(b.order??0));
+      const orderMap = {};
+      newCol.forEach((t, i) => { orderMap[t.id] = i; });
+      return updated.map(t => t.status === status && orderMap[t.id] !== undefined ? {...t, order: orderMap[t.id]} : t);
     });
   };
 
-  const reorder = (dragId, targetId, status) => {
+  const reorder = (dragId, targetId, pos, status) => {
     setTasks(ts => {
       const colTasks = ts.filter(t => t.status === status).sort((a,b) => (a.order??0)-(b.order??0));
       const fromIdx = colTasks.findIndex(t => t.id === dragId);
-      const toIdx   = targetId ? colTasks.findIndex(t => t.id === targetId) : colTasks.length - 1;
-      if(fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return ts;
+      let toIdx = targetId ? colTasks.findIndex(t => t.id === targetId) : colTasks.length - 1;
+      if(fromIdx < 0 || toIdx < 0) return ts;
+      // posに応じてafter→次のインデックスに挿入
+      if(pos === "after" && targetId) toIdx = toIdx + 1;
+      if(fromIdx === toIdx || fromIdx === toIdx - 1 && pos === "after") return ts;
       const reordered = [...colTasks];
       const [moved] = reordered.splice(fromIdx, 1);
-      reordered.splice(toIdx, 0, moved);
+      const insertAt = fromIdx < toIdx ? toIdx - 1 : toIdx;
+      reordered.splice(insertAt, 0, moved);
       const orderMap = {};
       reordered.forEach((t, i) => { orderMap[t.id] = i; });
       return ts.map(t => t.status === status && orderMap[t.id] !== undefined ? {...t, order: orderMap[t.id]} : t);
