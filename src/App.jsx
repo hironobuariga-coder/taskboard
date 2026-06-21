@@ -108,7 +108,7 @@ function Modal({ task, onSave, onClose }) {
   );
 }
 
-// ===== TASK CARD =====
+// ===== TASK CARD (コンパクト版) =====
 function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnd, isDragging }) {
   const overdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "Done";
   return (
@@ -117,32 +117,31 @@ function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnd, isDragging }
       onDragStart={e => { e.dataTransfer.effectAllowed = "move"; onDragStart(task.id); }}
       onDragEnd={onDragEnd}
       onClick={() => onEdit(task)}
-      className={`group relative mb-2 cursor-pointer rounded-lg border-l-[3px] border border-r-0 border-t-0 border-b-0
-        bg-[#1c1c2e] border-r border-t border-b border-violet-500/10
-        p-3 transition-all hover:border-violet-400/30 hover:bg-[#25253a]
+      className={`group relative cursor-pointer rounded-md border-l-[3px]
+        bg-[#1c1c2e] border border-violet-500/10
+        p-2 transition-all hover:border-violet-400/30 hover:bg-[#25253a]
         ${PRI[task.priority]?.ring || "border-l-slate-500"}
         ${isDragging ? "opacity-40 scale-95" : "opacity-100"}`}
     >
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <p className={`text-[13px] font-medium leading-tight ${task.status === "Done" ? "line-through text-[#5e5c80]" : "text-[#e2e0ff]"}`}>
+      <div className="flex items-start justify-between gap-1 mb-1">
+        <p className={`text-[12px] font-medium leading-snug flex-1 min-w-0 ${task.status === "Done" ? "line-through text-[#5e5c80]" : "text-[#e2e0ff]"}`}>
           {task.title}
         </p>
         <button onClick={e => { e.stopPropagation(); onDelete(task.id); }}
           className="hidden shrink-0 rounded p-0.5 text-[#5e5c80] hover:bg-red-950/50 hover:text-red-400 group-hover:flex">
-          <Icon name="trash" size={13} />
+          <Icon name="trash" size={11} />
         </button>
       </div>
-      {task.description && <p className="mb-2 text-[11px] leading-relaxed text-[#9d9bbf] line-clamp-2">{task.description}</p>}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${PRI[task.priority]?.badge || ""}`}>{PRI_LABEL[task.priority]||task.priority}</span>
+      <div className="flex flex-wrap items-center gap-1">
+        <span className={`rounded px-1 py-0.5 text-[9px] font-medium ${PRI[task.priority]?.badge || ""}`}>{PRI_LABEL[task.priority]||task.priority}</span>
         {task.dueDate && (
-          <span className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] ${overdue ? "bg-red-950/60 text-red-300 border border-red-500/30" : "bg-[#25253a] text-[#9d9bbf] border border-violet-500/10"}`}>
-            <Icon name="calendar" size={10} />{task.dueDate}
+          <span className={`flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] ${overdue ? "bg-red-950/60 text-red-300 border border-red-500/30" : "bg-[#25253a] text-[#9d9bbf] border border-violet-500/10"}`}>
+            <Icon name="calendar" size={9} />{task.dueDate}
           </span>
         )}
-        {(task.estHours || task.actHours) ? (
-          <span className="flex items-center gap-0.5 rounded border border-violet-500/10 bg-[#25253a] px-1.5 py-0.5 text-[10px] text-[#9d9bbf]">
-            <Icon name="clock" size={10} />{task.actHours||0}h / {task.estHours||0}h
+        {(task.estHours||task.actHours) ? (
+          <span className="flex items-center gap-0.5 rounded border border-violet-500/10 bg-[#25253a] px-1 py-0.5 text-[9px] text-[#9d9bbf]">
+            <Icon name="clock" size={9} />{task.actHours||0}/{task.estHours||0}h
           </span>
         ) : null}
       </div>
@@ -150,15 +149,27 @@ function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnd, isDragging }
   );
 }
 
-// ===== KANBAN =====
-function KanbanView({ tasks, onEdit, onDelete, onMove }) {
+// ===== KANBAN (2列グリッド) =====
+function KanbanView({ tasks, onEdit, onDelete, onMove, sortKey, sortDir }) {
   const [dragging, setDragging] = useState(null);
   const [over, setOver] = useState(null);
+
+  const sortTasks = ts => {
+    const arr = [...ts];
+    const priOrder = {"High":0,"Medium":1,"Low":2};
+    if(sortKey === "priority") arr.sort((a,b) => sortDir==="asc" ? priOrder[a.priority]-priOrder[b.priority] : priOrder[b.priority]-priOrder[a.priority]);
+    else if(sortKey === "title") arr.sort((a,b) => sortDir==="asc" ? a.title.localeCompare(b.title,"ja") : b.title.localeCompare(a.title,"ja"));
+    else if(sortKey === "dueDate") arr.sort((a,b) => { const da=a.dueDate||"9999",db=b.dueDate||"9999"; return sortDir==="asc"?da.localeCompare(db):db.localeCompare(da); });
+    else if(sortKey === "createdAt") arr.sort((a,b) => sortDir==="asc" ? (a.createdAt||0)-(b.createdAt||0) : (b.createdAt||0)-(a.createdAt||0));
+    else arr.sort((a,b) => a.order - b.order);
+    return arr;
+  };
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       {STATUSES.map(st => {
         const col = STA[st];
-        const colTasks = tasks.filter(t => t.status === st).sort((a,b) => a.order - b.order);
+        const colTasks = sortTasks(tasks.filter(t => t.status === st));
         return (
           <div key={st}
             className={`min-h-[200px] rounded-xl border ${col.accent} ${col.bg} p-3 transition-colors
@@ -167,15 +178,17 @@ function KanbanView({ tasks, onEdit, onDelete, onMove }) {
             onDragLeave={() => setOver(null)}
             onDrop={() => { if(dragging) onMove(dragging, st); setDragging(null); setOver(null); }}
           >
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between">
               <span className={`text-[13px] font-semibold ${col.header}`}>{STATUS_LABEL[st]||st}</span>
               <span className="rounded-full bg-[#25253a] border border-violet-500/10 px-2 py-0.5 text-[11px] text-[#9d9bbf]">{colTasks.length}</span>
             </div>
-            {colTasks.map(t => (
-              <TaskCard key={t.id} task={t} onEdit={onEdit} onDelete={onDelete}
-                onDragStart={id => setDragging(id)} onDragEnd={() => setDragging(null)}
-                isDragging={dragging === t.id} />
-            ))}
+            <div className="grid grid-cols-2 gap-1.5">
+              {colTasks.map(t => (
+                <TaskCard key={t.id} task={t} onEdit={onEdit} onDelete={onDelete}
+                  onDragStart={id => setDragging(id)} onDragEnd={() => setDragging(null)}
+                  isDragging={dragging === t.id} />
+              ))}
+            </div>
           </div>
         );
       })}
@@ -333,6 +346,8 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterPri, setFilterPri] = useState("");
+  const [sortKey, setSortKey] = useState("");
+  const [sortDir, setSortDir] = useState("asc");
 
   useEffect(() => {
     try { localStorage.setItem("tasks", JSON.stringify(tasks)); } catch {}
@@ -348,6 +363,11 @@ export default function App() {
   const del = id => setTasks(ts => ts.filter(t => t.id !== id));
   const move = (id, status) => setTasks(ts => ts.map(t => t.id===id ? {...t, status} : t));
   const statusChange = (id, status) => setTasks(ts => ts.map(t => t.id===id ? {...t, status} : t));
+
+  const toggleSort = key => {
+    if(sortKey === key) setSortDir(d => d==="asc"?"desc":"asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  };
 
   const filtered = tasks.filter(t => {
     const q = search.toLowerCase();
@@ -427,13 +447,32 @@ export default function App() {
                 border: `0.5px solid ${filterPri===v ? "rgba(124,111,205,0.4)" : "rgba(124,111,205,0.15)"}`,
               }}>{l}</button>
           ))}
+          <div className="w-px h-5" style={{background:"rgba(124,111,205,0.15)"}} />
+          <span style={{fontSize:"11px",color:"#5e5c80",flexShrink:0}}>並び替え:</span>
+          {[
+            {key:"priority", label:"優先度"},
+            {key:"title",    label:"名前"},
+            {key:"dueDate",  label:"期日"},
+            {key:"createdAt",label:"作成日"},
+          ].map(({key,label}) => (
+            <button key={key} onClick={() => toggleSort(key)}
+              className="rounded-lg px-2.5 py-1.5 text-[12px] transition-colors flex items-center gap-1"
+              style={{
+                background: sortKey===key ? "#2d2b55" : "#25253a",
+                color: sortKey===key ? "#c4bef5" : "#9d9bbf",
+                border: `0.5px solid ${sortKey===key ? "rgba(124,111,205,0.4)" : "rgba(124,111,205,0.15)"}`,
+              }}>
+              {label}
+              {sortKey===key && <Icon name={sortDir==="asc"?"arrow-up":"arrow-down"} size={11} />}
+            </button>
+          ))}
           <span className="ml-auto text-[11px]" style={{color:"#5e5c80"}}>{filtered.length}件</span>
         </div>
       )}
 
       {/* CONTENT */}
       <main className="p-5">
-        {view === "kanban"    && <KanbanView    tasks={filtered} onEdit={t => setModal(t)} onDelete={del} onMove={move} />}
+        {view === "kanban"    && <KanbanView    tasks={filtered} onEdit={t => setModal(t)} onDelete={del} onMove={move} sortKey={sortKey} sortDir={sortDir} />}
         {view === "list"      && <ListView      tasks={filtered} onEdit={t => setModal(t)} onDelete={del} onStatusChange={statusChange} />}
         {view === "dashboard" && <Dashboard     tasks={tasks} />}
       </main>
