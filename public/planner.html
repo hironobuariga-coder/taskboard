@@ -199,6 +199,15 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 .leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .empty-msg{font-size:12px;color:var(--text3);text-align:center;padding:1.5rem}
 .toast-wrap{position:fixed;bottom:20px;right:20px;z-index:999}
+.cat-guide{display:none;position:absolute;left:0;top:100%;margin-top:4px;background:var(--bg);border:0.5px solid var(--border2);border-radius:var(--r-lg);padding:10px 12px;z-index:300;width:260px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.cat-guide.show{display:block}
+.cat-guide-title{font-size:12px;font-weight:500;margin-bottom:6px;color:var(--accent-text)}
+.cat-guide-row{display:flex;align-items:flex-start;gap:6px;padding:4px 0;border-bottom:0.5px solid var(--border);font-size:11px}
+.cat-guide-row:last-child{border-bottom:none}
+.cat-guide-name{width:90px;flex-shrink:0;font-weight:500;color:var(--text)}
+.cat-guide-ex{color:var(--text2);line-height:1.4}
+.cat-select-wrap{position:relative;display:inline-block;width:100%}
+.backup-btn{font-size:12px;padding:4px 10px}
 </style>
 </head>
 <body>
@@ -210,8 +219,13 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
   <button class="nav-link active" onclick="showPage('planner')"><i class="ti ti-calendar-event"></i> Day Planner</button>
   <button class="nav-link" onclick="showPage('timer')"><i class="ti ti-clock"></i> タイマー</button>
   <button class="nav-link" onclick="showPage('log')"><i class="ti ti-notebook"></i> 実績ログ</button>
-  <div class="nav-right">
+  <div class="nav-right" style="gap:8px">
     <span class="nav-ext" id="nav-sync-badge" style="display:none"><i class="ti ti-calendar-check" style="font-size:14px"></i> <span id="nav-sync-text"></span></span>
+    <button class="backup-btn" onclick="exportBackup()" style="font-size:11px" title="データをバックアップ"><i class="ti ti-database-export" style="font-size:13px"></i> バックアップ</button>
+    <label style="cursor:pointer;margin:0" title="バックアップから復元">
+      <input type="file" id="restore-file" accept=".json" onchange="importBackup(this)" style="display:none">
+      <span class="backup-btn" onclick="document.getElementById('restore-file').click()" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;border-radius:var(--r-md);border:0.5px solid var(--border2);cursor:pointer;background:var(--bg);color:var(--text)"><i class="ti ti-database-import" style="font-size:13px"></i> 復元</span>
+    </label>
   </div>
 </nav>
 
@@ -223,12 +237,9 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
   <div id="ics-panel" style="background:var(--bg);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:12px 16px;margin-bottom:1rem">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button id="btn-outlook" onclick="openOutlook()" style="background:var(--accent);color:#fff;border-color:var(--accent);font-size:13px">
-          <i class="ti ti-calendar-event"></i> Outlookを開く
-        </button>
         <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0">
           <input type="file" id="ics-file" accept=".ics" onchange="loadICSFile(this)" style="display:none">
-          <span class="btn-primary" onclick="document.getElementById('ics-file').click()" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:var(--r-md);font-size:13px;background:var(--bg2);color:var(--text);border:0.5px solid var(--border2)">
+          <span onclick="document.getElementById('ics-file').click()" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:var(--r-md);font-size:13px;background:var(--accent);color:#fff;border:0.5px solid var(--accent)">
             <i class="ti ti-file-import"></i> ICSを取り込む
           </span>
         </label>
@@ -242,11 +253,6 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
           <i class="ti ti-calendar-check" style="font-size:13px"></i> <span id="sync-text"></span>
         </span>
       </div>
-    </div>
-    <div id="ics-url-row" style="margin-top:10px;display:flex;gap:6px;align-items:center">
-      <i class="ti ti-link" style="font-size:13px;color:var(--text3);flex-shrink:0"></i>
-      <input type="text" id="ics-url" placeholder="OutlookのICSダウンロードURL（登録しておくと「Outlookを開く」で直接ジャンプ）"
-        style="flex:1;font-size:12px;background:var(--bg2)" oninput="saveICSUrl()" />
     </div>
     <div class="status-msg" id="ics-status" style="margin-top:6px;margin-bottom:0"></div>
   </div>
@@ -273,12 +279,8 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
         <div id="task-sidebar"></div>
       </div>
       <div class="sidebar-card">
-        <span style="font-size:11px;font-weight:500;color:var(--text2)">凡例</span>
-        <div class="legend" style="margin-top:6px">
-          <div class="leg-item"><div class="leg-dot" style="background:#378ADD"></div>Outlook</div>
-          <div class="leg-item"><div class="leg-dot" style="background:#7F77DD"></div>追加済み</div>
-          <div class="leg-item"><div class="leg-dot" style="background:#639922"></div>タスク</div>
-        </div>
+        <span style="font-size:11px;font-weight:500;color:var(--text2)">カテゴリー凡例</span>
+        <div class="legend" style="margin-top:6px;flex-direction:column;gap:5px" id="cat-legend"></div>
       </div>
     </div>
     <div>
@@ -288,6 +290,9 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
           <button onclick="navDay(-1)"><i class="ti ti-chevron-left" style="font-size:13px"></i></button>
           <button class="btn-sm" onclick="goToday()">今日</button>
           <button onclick="navDay(1)"><i class="ti ti-chevron-right" style="font-size:13px"></i></button>
+          <button class="btn-sm" onclick="openQuickAdd()" style="background:var(--accent);color:#fff;border-color:var(--accent)"><i class="ti ti-plus" style="font-size:12px"></i> クイック追加</button>
+          <button class="btn-sm" onclick="openBulkAdd()"><i class="ti ti-list-plus" style="font-size:12px"></i> 一括</button>
+          <button class="btn-sm" onclick="openTplModal()"><i class="ti ti-template" style="font-size:12px"></i> テンプレート</button>
         </div>
       </div>
       <div class="timeline" id="timeline"></div>
@@ -319,10 +324,8 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
       <div id="break-panel" style="display:none">
         <div style="font-size:11px;color:var(--text2);margin-bottom:4px">種別</div>
         <div class="break-types">
-          <button class="bt sel" data-bt="lunch" onclick="selBT(this,'lunch')"><i class="ti ti-soup" style="font-size:11px"></i> 昼食</button>
-          <button class="bt" data-bt="short" onclick="selBT(this,'short')"><i class="ti ti-coffee" style="font-size:11px"></i> 短休憩</button>
-          <button class="bt" data-bt="long" onclick="selBT(this,'long')"><i class="ti ti-armchair" style="font-size:11px"></i> 長休憩</button>
-          <button class="bt" data-bt="out" onclick="selBT(this,'out')"><i class="ti ti-walk" style="font-size:11px"></i> 外出</button>
+          <button class="bt sel" data-bt="rest" onclick="selBT(this,'rest')"><i class="ti ti-soup" style="font-size:11px"></i> 休憩・昼食</button>
+          <button class="bt" data-bt="travel" onclick="selBT(this,'travel')"><i class="ti ti-walk" style="font-size:11px"></i> 移動・外出</button>
           <button class="bt" data-bt="other" onclick="selBT(this,'other')"><i class="ti ti-dots" style="font-size:11px"></i> その他</button>
         </div>
         <input type="text" id="break-memo" placeholder="メモ（任意）" style="margin-top:6px">
@@ -355,11 +358,12 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
     <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:var(--text2)"><i class="ti ti-pencil-plus" style="font-size:13px"></i> 手入力で追加</div>
     <div class="qa-row">
       <select id="qa-kind" onchange="onQaKind()" style="width:auto">
-        <option value="work">作業</option>
-        <option value="lunch">昼食</option>
-        <option value="short">短休憩</option>
-        <option value="long">長休憩</option>
-        <option value="out">外出</option>
+        <option value="meeting">会議・打ち合わせ</option>
+        <option value="focus">集中作業</option>
+        <option value="comms">連絡・調整</option>
+        <option value="travel">移動・外出</option>
+        <option value="rest">休憩・昼食</option>
+        <option value="admin">管理・雑務</option>
         <option value="other">その他</option>
       </select>
       <input type="text" id="qa-title" placeholder="タスク名・メモ" style="flex:1;min-width:80px">
@@ -405,14 +409,19 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
     </div>
     <input type="hidden" id="ev-id">
     <div class="form-row"><label>タイトル</label><input type="text" id="ev-title" placeholder="例：1on1 田中さん"></div>
-    <div class="form-row"><label>種別</label>
-      <select id="ev-type">
-        <option value="meeting">会議</option>
-        <option value="focus">集中作業</option>
-        <option value="task-block">タスクブロック</option>
-        <option value="admin">管理業務</option>
-        <option value="personal">その他</option>
-      </select>
+    <div class="form-row"><label>種別 <button type="button" onclick="toggleCatGuide('ev-guide')" style="font-size:10px;padding:1px 6px;margin-left:4px;color:var(--accent-text);border-color:var(--accent)"><i class="ti ti-help" style="font-size:11px"></i> 例を見る</button></label>
+      <div class="cat-select-wrap">
+        <select id="ev-type" onchange="onCatChange('ev-type','ev-guide')">
+          <option value="meeting">会議・打ち合わせ</option>
+          <option value="focus">集中作業</option>
+          <option value="comms">連絡・調整</option>
+          <option value="travel">移動・外出</option>
+          <option value="rest">休憩・昼食</option>
+          <option value="admin">管理・雑務</option>
+          <option value="other">その他</option>
+        </select>
+        <div class="cat-guide" id="ev-guide"></div>
+      </div>
     </div>
     <div class="form-grid">
       <div class="form-row"><label>開始</label><input type="time" id="ev-start" value="10:00"></div>
@@ -440,6 +449,90 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 
 <div class="toast-wrap" id="toast-wrap"></div>
 
+<!-- クイック追加モーダル -->
+<div class="modal-wrap" id="quick-modal">
+  <div class="modal" style="width:320px">
+    <div class="modal-title">
+      <span><i class="ti ti-zap" style="font-size:14px;color:var(--accent)"></i> クイック追加</span>
+      <button class="btn-icon btn-sm" onclick="closeModal('quick-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-row"><label>タイトル</label><input type="text" id="q-title" placeholder="例：朝会" autofocus onkeydown="if(event.key==='Enter')saveQuick()"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="form-row"><label>開始</label><input type="time" id="q-start" value="09:00"></div>
+      <div class="form-row"><label>終了</label><input type="time" id="q-end" value="10:00"></div>
+    </div>
+    <div class="form-row"><label>種別 <button type="button" onclick="toggleCatGuide('q-guide')" style="font-size:10px;padding:1px 6px;margin-left:4px;color:var(--accent-text);border-color:var(--accent)"><i class="ti ti-help" style="font-size:11px"></i> 例を見る</button></label>
+      <div class="cat-select-wrap">
+        <select id="q-type" onchange="onCatChange('q-type','q-guide')">
+          <option value="meeting">会議・打ち合わせ</option>
+          <option value="focus">集中作業</option>
+          <option value="comms">連絡・調整</option>
+          <option value="travel">移動・外出</option>
+          <option value="rest">休憩・昼食</option>
+          <option value="admin">管理・雑務</option>
+          <option value="other">その他</option>
+        </select>
+        <div class="cat-guide" id="q-guide"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeModal('quick-modal')">キャンセル</button>
+      <button class="btn-primary" onclick="saveQuick()"><i class="ti ti-check"></i> 追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- 一括登録モーダル -->
+<div class="modal-wrap" id="bulk-modal">
+  <div class="modal" style="width:500px;max-width:96vw">
+    <div class="modal-title">
+      <span><i class="ti ti-list-plus" style="font-size:14px;color:var(--accent)"></i> 一括登録</span>
+      <button class="btn-icon btn-sm" onclick="closeModal('bulk-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:8px">複数の予定をまとめて追加できます。行を追加してまとめて保存してください。</div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px" id="bulk-table">
+        <thead>
+          <tr style="border-bottom:0.5px solid var(--border)">
+            <th style="text-align:left;padding:4px 6px;font-size:11px;color:var(--text2);font-weight:500">タイトル</th>
+            <th style="text-align:left;padding:4px 6px;font-size:11px;color:var(--text2);font-weight:500;width:80px">開始</th>
+            <th style="text-align:left;padding:4px 6px;font-size:11px;color:var(--text2);font-weight:500;width:80px">終了</th>
+            <th style="text-align:left;padding:4px 6px;font-size:11px;color:var(--text2);font-weight:500;width:90px">種別</th>
+            <th style="width:28px"></th>
+          </tr>
+        </thead>
+        <tbody id="bulk-tbody"></tbody>
+      </table>
+    </div>
+    <button onclick="addBulkRow()" style="margin-top:8px;font-size:12px;color:var(--accent);border-color:var(--accent)">
+      <i class="ti ti-plus"></i> 行を追加
+    </button>
+    <div class="modal-actions">
+      <button onclick="closeModal('bulk-modal')">キャンセル</button>
+      <button class="btn-primary" onclick="saveBulk()"><i class="ti ti-device-floppy"></i> 一括保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- テンプレートモーダル -->
+<div class="modal-wrap" id="tpl-modal">
+  <div class="modal" style="width:420px;max-width:96vw">
+    <div class="modal-title">
+      <span><i class="ti ti-template" style="font-size:14px;color:var(--accent)"></i> テンプレート</span>
+      <button class="btn-icon btn-sm" onclick="closeModal('tpl-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="text" id="tpl-new-name" placeholder="テンプレート名（例：週次定例）" style="flex:1;font-size:12px">
+      <button onclick="saveTpl()" style="font-size:12px;background:var(--accent);color:#fff;border-color:var(--accent);white-space:nowrap">
+        <i class="ti ti-plus"></i> 今日の予定を保存
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:8px">登録済みテンプレート</div>
+    <div id="tpl-list" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto"></div>
+    <div id="tpl-empty" style="font-size:12px;color:var(--text3);text-align:center;padding:1rem">テンプレートがありません</div>
+  </div>
+</div>
+
 <script>
 // ===== STATE =====
 let outlookEvs=[], localEvs=JSON.parse(localStorage.getItem('dp-events')||'[]');
@@ -450,7 +543,7 @@ let selDate=new Date(); selDate.setHours(0,0,0,0);
 let mcBase=new Date(selDate); mcBase.setDate(1);
 
 // timer
-let tMode='work',tBtype='lunch',tSetMin=25,tElSec=0,tStart=null,tPaused=0,tState='idle',tRAF=null;
+let tMode='work',tBtype='rest',tSetMin=25,tElSec=0,tStart=null,tPaused=0,tState='idle',tRAF=null;
 let tAlertMin=false,tAlertEnd=false,tCurTask=null;
 
 // ===== UTILS =====
@@ -612,17 +705,20 @@ function getDayEvs(date){
   }));
   return [...oe,...le,...te].sort((a,b)=>new Date(a.start)-new Date(b.start));
 }
+const CAT_DEF={
+  meeting:{label:'会議・打ち合わせ',icon:'ti-users',bg:'#2d2b55',border:'#7c6fcd',text:'#c4bef5',ex:'社内会議、顧客MTG、1on1、週次定例、ブレスト'},
+  focus:  {label:'集中作業',icon:'ti-brain',bg:'#0d3326',border:'#1D9E75',text:'#5DCAA5',ex:'資料作成、企画立案、コーディング、分析、レポート'},
+  comms:  {label:'連絡・調整',icon:'ti-message-circle',bg:'#3a2200',border:'#EF9F27',text:'#FAC775',ex:'メール返信、チャット対応、電話、日程調整、確認作業'},
+  travel: {label:'移動・外出',icon:'ti-car',bg:'#26215C',border:'#7F77DD',text:'#AFA9EC',ex:'客先訪問、現地調査、出張、通勤'},
+  rest:   {label:'休憩・昼食',icon:'ti-coffee',bg:'#1a1a1a',border:'#5F5E5A',text:'#B4B2A9',ex:'昼休み、コーヒーブレイク、リフレッシュ休憩'},
+  admin:  {label:'管理・雑務',icon:'ti-file-description',bg:'#3a1a00',border:'#D85A30',text:'#F0997B',ex:'経費精算、勤怠入力、書類整理、社内手続き、備品管理'},
+  other:  {label:'その他',icon:'ti-dots',bg:'#25253a',border:'#5e5c80',text:'#9d9bbf',ex:'上記に当てはまらないもの'}
+};
 function catStyle(cat,src){
-  if(src==='taskboard')return{bg:'#0d3326',border:'#1D9E75',text:'#5DCAA5'};
-  if(src==='local'){if(cat==='task-block')return{bg:'#0d3326',border:'#1D9E75',text:'#5DCAA5'};return{bg:'#2d2b55',border:'#7c6fcd',text:'#c4bef5'};}
-  const m={
-    meeting:    {bg:'#2d2b55',border:'#7c6fcd',text:'#c4bef5'},
-    focus:      {bg:'#0d3326',border:'#1D9E75',text:'#5DCAA5'},
-    admin:      {bg:'#3a2200',border:'#EF9F27',text:'#FAC775'},
-    personal:   {bg:'#25253a',border:'#5e5c80',text:'#9d9bbf'},
-    'task-block':{bg:'#0d3326',border:'#1D9E75',text:'#5DCAA5'}
-  };
-  return m[cat]||m.meeting;
+  const c=CAT_DEF[cat];
+  if(c)return{bg:c.bg,border:c.border,text:c.text};
+  if(src==='taskboard')return CAT_DEF.focus;
+  return CAT_DEF.other;
 }
 
 // ===== RENDER =====
@@ -813,8 +909,8 @@ function startTimer(){
   const isBreak=tMode==='break';
   const sel=document.getElementById('timer-task');
   const selTitle=sel.options[sel.selectedIndex]?.text||'';
-  const bLabel={lunch:'昼食',short:'短休憩',long:'長休憩',out:'外出',other:'その他'};
-  const title=isBreak?(bLabel[tBtype]+(document.getElementById('break-memo').value.trim()?' · '+document.getElementById('break-memo').value.trim():'')):(selTitle&&selTitle!=='— タスクを選択 —'?selTitle:'作業');
+  const bLabel={}; Object.keys(CAT_DEF).forEach(k=>bLabel[k]=CAT_DEF[k].label);
+  const title=isBreak?((CAT_DEF[tBtype]?CAT_DEF[tBtype].label:'休憩')+(document.getElementById('break-memo').value.trim()?' · '+document.getElementById('break-memo').value.trim():'')):(selTitle&&selTitle!=='— タスクを選択 —'?selTitle:'集中作業');
   tCurTask={kind:isBreak?tBtype:'work',title,planned:tSetMin,startStr:fmtNow(),id:uid()};
   tElSec=0;tPaused=0;tStart=performance.now();tState='running';tAlertMin=false;tAlertEnd=false;
   document.getElementById('btn-start').style.display='none';
@@ -921,12 +1017,12 @@ function renderNextQ(){
 }
 
 // ===== LOG =====
-const BTYPE_LABEL={lunch:'昼食',short:'短休憩',long:'長休憩',out:'外出',other:'その他',work:'作業'};
-function isBreakKind(k){return k!=='work';}
+function catLabel(k){return CAT_DEF[k]?CAT_DEF[k].label:k;}
+function isBreakKind(k){return k==='rest'||k==='travel';}
 function onQaKind(){document.getElementById('qa-plan').style.display=document.getElementById('qa-kind').value==='work'?'':'none';}
 function qaAdd(){
   const k=document.getElementById('qa-kind').value;
-  const t=document.getElementById('qa-title').value.trim()||(BTYPE_LABEL[k]||k);
+  const t=document.getElementById('qa-title').value.trim()||(catLabel(k));
   const s=document.getElementById('qa-start').value,e=document.getElementById('qa-end').value;
   const pl=k==='work'?(parseInt(document.getElementById('qa-plan').value)||null):null;
   let el=null;if(s&&e){const[sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number);el=(eh*60+em)-(sh*60+sm);if(el<=0)el=null;}
@@ -940,7 +1036,7 @@ function renderLog(){
   const tb=document.getElementById('log-body'),em=document.getElementById('log-empty');
   if(!items.length){tb.innerHTML='';em.style.display='';renderLogMetrics();return;}
   em.style.display='none';
-  const kindOpts=k=>['work','lunch','short','long','out','other'].map(v=>`<option value="${v}"${k===v?' selected':''}>${BTYPE_LABEL[v]}</option>`).join('');
+  const kindOpts=k=>Object.keys(CAT_DEF).map(v=>`<option value="${v}"${k===v?' selected':''}>${CAT_DEF[v].label}</option>`).join('');
   const statOpts=s=>['done','partial','skip'].map(v=>`<option value="${v}"${s===v?' selected':''}>${{done:'完了',partial:'途中',skip:'未実施'}[v]}</option>`).join('');
   tb.innerHTML=items.map(a=>{
     const i=log.indexOf(a);
@@ -974,6 +1070,190 @@ function renderLogMetrics(){
     <div class="metric"><div class="metric-label">稼働率</div><div class="metric-value">${tot?rate+'%':'—'}</div><div class="metric-sub">作業/(作業+休憩)</div></div>`;
 }
 
+// ===== クイック追加 =====
+function openQuickAdd(){
+  const now=new Date();
+  const h=now.getHours();
+  document.getElementById('q-start').value=pad(h)+':00';
+  document.getElementById('q-end').value=pad(h+1)+':00';
+  document.getElementById('q-title').value='';
+  document.getElementById('quick-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('q-title').focus(),50);
+}
+function saveQuick(){
+  const title=document.getElementById('q-title').value.trim();
+  if(!title)return;
+  const cat=document.getElementById('q-type').value;
+  const sT=document.getElementById('q-start').value;
+  const eT=document.getElementById('q-end').value;
+  const d=selDate;
+  const start=new Date(d);const[sh,sm]=sT.split(':');start.setHours(+sh,+sm,0,0);
+  const end=new Date(d);const[eh,em]=eT.split(':');end.setHours(+eh,+em,0,0);
+  localEvs.push({id:uid(),summary:title,category:cat,start:start.toISOString(),end:end.toISOString(),note:'',source:'local'});
+  saveLocal();closeModal('quick-modal');renderAll();toast('「'+title+'」を追加しました');
+}
+
+// ===== 一括登録 =====
+function openBulkAdd(){
+  document.getElementById('bulk-tbody').innerHTML='';
+  addBulkRow();addBulkRow();addBulkRow();
+  document.getElementById('bulk-modal').classList.add('open');
+}
+function addBulkRow(){
+  const tb=document.getElementById('bulk-tbody');
+  const tr=document.createElement('tr');
+  tr.style.borderBottom='0.5px solid var(--border)';
+  const typeOpts=['meeting','focus','task-block','admin','personal'].map(v=>`<option value="${v}">${{meeting:'会議',focus:'集中作業','task-block':'タスクブロック',admin:'管理業務',personal:'その他'}[v]}</option>`).join('');
+  tr.innerHTML=`
+    <td style="padding:3px 4px"><input type="text" placeholder="予定名" style="font-size:12px;padding:4px 6px"></td>
+    <td style="padding:3px 4px"><input type="time" style="font-size:12px;padding:4px 6px;width:78px"></td>
+    <td style="padding:3px 4px"><input type="time" style="font-size:12px;padding:4px 6px;width:78px"></td>
+    <td style="padding:3px 4px"><select style="font-size:11px;padding:3px 4px;width:88px">${typeOpts}</select></td>
+    <td style="padding:3px 4px"><button onclick="this.closest('tr').remove()" style="font-size:11px;padding:2px 5px;color:var(--text3)"><i class="ti ti-x" style="font-size:11px"></i></button></td>`;
+  tb.appendChild(tr);
+}
+function saveBulk(){
+  const rows=document.querySelectorAll('#bulk-tbody tr');
+  let added=0;
+  rows.forEach(row=>{
+    const inputs=row.querySelectorAll('input,select');
+    const title=inputs[0].value.trim();
+    const sT=inputs[1].value;
+    const eT=inputs[2].value;
+    const cat=inputs[3].value;
+    if(!title||!sT||!eT)return;
+    const d=selDate;
+    const start=new Date(d);const[sh,sm]=sT.split(':');start.setHours(+sh,+sm,0,0);
+    const end=new Date(d);const[eh,em]=eT.split(':');end.setHours(+eh,+em,0,0);
+    localEvs.push({id:uid(),summary:title,category:cat,start:start.toISOString(),end:end.toISOString(),note:'',source:'local'});
+    added++;
+  });
+  if(added>0){saveLocal();renderAll();closeModal('bulk-modal');toast(added+'件の予定を追加しました');}
+  else{alert('タイトル・開始・終了時刻をすべて入力してください');}
+}
+
+// ===== テンプレート =====
+let templates=JSON.parse(localStorage.getItem('dp-templates')||'[]');
+function saveTpls(){localStorage.setItem('dp-templates',JSON.stringify(templates));}
+function openTplModal(){renderTplList();document.getElementById('tpl-modal').classList.add('open');}
+function saveTpl(){
+  const name=document.getElementById('tpl-new-name').value.trim();
+  if(!name)return;
+  const todayEvs=localEvs.filter(e=>{const es=new Date(e.start);es.setHours(0,0,0,0);return es.getTime()===selDate.getTime();});
+  if(!todayEvs.length){alert('今日のローカル予定がありません');return;}
+  const items=todayEvs.map(e=>{
+    const s=new Date(e.start),en=new Date(e.end);
+    return{summary:e.summary,category:e.category,note:e.note||'',
+      sh:s.getHours(),sm:s.getMinutes(),eh:en.getHours(),em:en.getMinutes()};
+  });
+  templates.push({id:uid(),name,items,createdAt:Date.now()});
+  saveTpls();document.getElementById('tpl-new-name').value='';
+  renderTplList();toast('テンプレート「'+name+'」を保存しました');
+}
+function applyTpl(id){
+  const tpl=templates.find(t=>t.id===id);if(!tpl)return;
+  const d=selDate;
+  tpl.items.forEach(it=>{
+    const start=new Date(d);start.setHours(it.sh,it.sm,0,0);
+    const end=new Date(d);end.setHours(it.eh,it.em,0,0);
+    localEvs.push({id:uid(),summary:it.summary,category:it.category,start:start.toISOString(),end:end.toISOString(),note:it.note||'',source:'local'});
+  });
+  saveLocal();renderAll();closeModal('tpl-modal');
+  toast('「'+tpl.name+'」('+tpl.items.length+'件) を'+['日','月','火','水','木','金','土'][d.getDay()]+'曜日に展開しました');
+}
+function deleteTpl(id){
+  if(!confirm('このテンプレートを削除しますか？'))return;
+  templates=templates.filter(t=>t.id!==id);saveTpls();renderTplList();
+}
+function renderTplList(){
+  const el=document.getElementById('tpl-list');
+  const em=document.getElementById('tpl-empty');
+  if(!templates.length){el.innerHTML='';em.style.display='';return;}
+  em.style.display='none';
+  el.innerHTML=templates.map(t=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border-radius:var(--r-md);border:0.5px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500">${t.name}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${t.items.length}件 · ${t.items.map(i=>i.summary).slice(0,3).join('、')}${t.items.length>3?'…':''}</div>
+      </div>
+      <button onclick="applyTpl('${t.id}')" style="font-size:12px;background:var(--accent);color:#fff;border-color:var(--accent);white-space:nowrap">
+        <i class="ti ti-player-play" style="font-size:11px"></i> 今日に展開
+      </button>
+      <button onclick="deleteTpl('${t.id}')" style="font-size:11px;padding:3px 6px;color:var(--text3)">
+        <i class="ti ti-trash" style="font-size:12px"></i>
+      </button>
+    </div>`).join('');
+}
+
+// ===== カテゴリーガイド =====
+function buildCatGuide(guideId){
+  const el=document.getElementById(guideId);if(!el)return;
+  el.innerHTML=`<div class="cat-guide-title"><i class="ti ti-info-circle" style="font-size:13px"></i> カテゴリーの具体例</div>`+
+    Object.entries(CAT_DEF).map(([k,v])=>`<div class="cat-guide-row"><span class="cat-guide-name"><i class="ti ${v.icon}" style="font-size:11px;margin-right:3px"></i>${v.label}</span><span class="cat-guide-ex">${v.ex}</span></div>`).join('');
+}
+function toggleCatGuide(guideId){
+  const el=document.getElementById(guideId);if(!el)return;
+  const isShow=el.classList.contains('show');
+  document.querySelectorAll('.cat-guide').forEach(g=>g.classList.remove('show'));
+  if(!isShow)el.classList.add('show');
+}
+function onCatChange(selectId,guideId){
+  document.getElementById(guideId).classList.remove('show');
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.cat-select-wrap')&&!e.target.closest('button[onclick*="toggleCatGuide"]')){
+    document.querySelectorAll('.cat-guide').forEach(g=>g.classList.remove('show'));
+  }
+});
+function renderCatLegend(){
+  const el=document.getElementById('cat-legend');if(!el)return;
+  el.innerHTML=Object.entries(CAT_DEF).map(([k,v])=>`
+    <div class="leg-item"><div class="leg-dot" style="background:${v.border}"></div><span>${v.label}</span></div>`).join('');
+}
+
+// ===== バックアップ・復元 =====
+function exportBackup(){
+  const data={
+    version:1,
+    exportedAt:new Date().toISOString(),
+    localEvs,plannerTasks,log,nextQ,templates,
+    icsUrl:localStorage.getItem('ics-registered-url')||'',
+    lastImported:localStorage.getItem('ics-last-imported')||''
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date();
+  a.href=url;a.download=`dayplanner-backup-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+  a.click();URL.revokeObjectURL(url);
+  toast('バックアップを保存しました');
+}
+function importBackup(input){
+  const file=input.files[0];if(!file)return;
+  if(!confirm('現在のデータをバックアップファイルで上書きしますか？\n※この操作は元に戻せません'))return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.version)throw new Error('不正なファイル形式');
+      localEvs=data.localEvs||[];
+      plannerTasks=data.plannerTasks||[];
+      log=data.log||[];
+      nextQ=data.nextQ||[];
+      templates=data.templates||[];
+      saveLocal();saveLog();
+      localStorage.setItem('tt-next',JSON.stringify(nextQ));
+      localStorage.setItem('dp-templates',JSON.stringify(templates));
+      if(data.icsUrl)localStorage.setItem('ics-registered-url',data.icsUrl);
+      if(data.lastImported){localStorage.setItem('ics-last-imported',data.lastImported);document.getElementById('last-imported').textContent='最終取り込み: '+data.lastImported;}
+      renderAll();renderLog();renderLogMetrics();renderNextQ();renderCatLegend();
+      toast('バックアップから復元しました');
+    }catch(err){alert('復元に失敗しました。有効なバックアップファイルを選択してください。');}
+    input.value='';
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
 // ===== INIT =====
 loadTBTasks();
 loadSavedUrl();
@@ -986,6 +1266,9 @@ renderAll();
 onQaKind();
 // Refresh TaskBoard tasks when navigating to this page
 window.addEventListener('focus',()=>{loadTBTasks();renderTaskSidebar();});
+renderCatLegend();
+buildCatGuide('ev-guide');
+buildCatGuide('q-guide');
 </script>
 </body>
 </html>
