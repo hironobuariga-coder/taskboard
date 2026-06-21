@@ -186,8 +186,6 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 .bar-fill{height:100%;border-radius:4px}
 
 /* URL BAR */
-.url-bar{display:flex;gap:6px;margin-bottom:6px}
-.url-bar input{flex:1;font-size:12px}
 .status-msg{font-size:11px;min-height:16px;margin-bottom:.75rem;display:flex;align-items:center;gap:5px}
 .status-msg.err{color:var(--red)}
 .status-msg.ok{color:var(--green-text)}
@@ -199,6 +197,16 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 .leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .empty-msg{font-size:12px;color:var(--text3);text-align:center;padding:1.5rem}
 .toast-wrap{position:fixed;bottom:20px;right:20px;z-index:999}
+.layout-3col{display:grid;grid-template-columns:190px 1fr 200px;gap:12px;align-items:start}
+.memo-panel{background:var(--bg);border:.5px solid var(--border);border-radius:var(--r-lg);padding:10px 12px}
+.memo-title{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.memo-area{width:100%;min-height:120px;font-size:12px;line-height:1.6;resize:vertical;background:var(--bg2);border-color:var(--border)}
+.work-hours-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px}
+.wh-day{text-align:center}
+.wh-dow{font-size:10px;color:var(--text3);margin-bottom:2px}
+.wh-input{width:100%;font-size:12px;padding:4px 2px;text-align:center}
+.wh-today .wh-dow{color:var(--accent-text);font-weight:500}
+.wh-today .wh-input{border-color:var(--accent)}
 .cat-guide{display:none;position:absolute;left:0;top:100%;margin-top:4px;background:var(--bg);border:0.5px solid var(--border2);border-radius:var(--r-lg);padding:10px 12px;z-index:300;width:260px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 .cat-guide.show{display:block}
 .cat-guide-title{font-size:12px;font-weight:500;margin-bottom:6px;color:var(--accent-text)}
@@ -221,6 +229,7 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
   <button class="nav-link" onclick="showPage('log')"><i class="ti ti-notebook"></i> 実績ログ</button>
   <div class="nav-right" style="gap:8px">
     <span class="nav-ext" id="nav-sync-badge" style="display:none"><i class="ti ti-calendar-check" style="font-size:14px"></i> <span id="nav-sync-text"></span></span>
+    <button class="backup-btn" onclick="openSettings()" style="font-size:11px" title="設定"><i class="ti ti-settings" style="font-size:13px"></i> 設定</button>
     <button class="backup-btn" onclick="exportBackup()" style="font-size:11px" title="データをバックアップ"><i class="ti ti-database-export" style="font-size:13px"></i> バックアップ</button>
     <label style="cursor:pointer;margin:0" title="バックアップから復元">
       <input type="file" id="restore-file" accept=".json" onchange="importBackup(this)" style="display:none">
@@ -234,32 +243,9 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 
 <!-- ===== PLANNER ===== -->
 <div id="page-planner" class="page active">
-  <div id="ics-panel" style="background:var(--bg);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:12px 16px;margin-bottom:1rem">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0">
-          <input type="file" id="ics-file" accept=".ics" onchange="loadICSFile(this)" style="display:none">
-          <span onclick="document.getElementById('ics-file').click()" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:var(--r-md);font-size:13px;background:var(--accent);color:#fff;border:0.5px solid var(--accent)">
-            <i class="ti ti-file-import"></i> ICSを取り込む
-          </span>
-        </label>
-        <button onclick="loadDemo()" style="font-size:12px;color:var(--text2);padding:4px 10px">
-          <i class="ti ti-test-pipe"></i> デモ
-        </button>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div id="last-imported" style="font-size:11px;color:var(--text3)"></div>
-        <span id="sync-badge" style="display:none;font-size:11px;background:var(--accent-bg);color:var(--accent-text);padding:2px 10px;border-radius:var(--r-md);border:0.5px solid var(--border2)">
-          <i class="ti ti-calendar-check" style="font-size:13px"></i> <span id="sync-text"></span>
-        </span>
-      </div>
-    </div>
-    <div class="status-msg" id="ics-status" style="margin-top:6px;margin-bottom:0"></div>
-  </div>
-
   <div class="metric-grid" id="planner-metrics"></div>
 
-  <div class="layout-2col">
+  <div class="layout-3col">
     <div>
       <div class="sidebar-card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -296,6 +282,23 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
         </div>
       </div>
       <div class="timeline" id="timeline"></div>
+    </div>
+    <div>
+      <div class="memo-panel">
+        <div class="memo-title"><i class="ti ti-notes" style="font-size:13px"></i> 日次メモ</div>
+        <textarea class="memo-area" id="day-memo" placeholder="今日の目標・気づき・振り返りなど..." oninput="saveDayMemo()"></textarea>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px" id="memo-saved"></div>
+      </div>
+      <div class="memo-panel" style="margin-top:10px">
+        <div class="memo-title"><i class="ti ti-clock-hour-9" style="font-size:13px"></i> 今日の稼働時間
+          <span id="today-wh-badge" style="margin-left:auto;font-size:11px;color:var(--accent-text);background:var(--accent-bg);padding:1px 8px;border-radius:var(--r-md)"></span>
+        </div>
+        <div id="today-wh-info" style="font-size:11px;color:var(--text2)"></div>
+      </div>
+      <div class="memo-panel" style="margin-top:10px">
+        <div class="metric-label" style="font-size:11px;font-weight:500;margin-bottom:6px">予定 vs 実績</div>
+        <div id="vs-panel"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -449,6 +452,38 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 
 <div class="toast-wrap" id="toast-wrap"></div>
 
+<!-- 設定モーダル -->
+<div class="modal-wrap" id="settings-modal">
+  <div class="modal" style="width:480px;max-width:96vw">
+    <div class="modal-title">
+      <span><i class="ti ti-settings" style="font-size:14px;color:var(--accent)"></i> 設定</span>
+      <button class="btn-icon btn-sm" onclick="closeModal('settings-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px">
+      <i class="ti ti-clock" style="font-size:13px"></i> デフォルト稼働時間
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+      <input type="number" id="default-wh" min="1" max="24" step="0.5" style="width:70px;text-align:center;font-size:16px;font-weight:500">
+      <span style="font-size:13px;color:var(--text2)">時間 / 日（日別設定がない日に適用）</span>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px">
+      <i class="ti ti-calendar-week" style="font-size:13px"></i> 日別稼働時間（前週から設定可）
+      <span style="font-size:10px;color:var(--text3);margin-left:6px">空欄 = デフォルト値を使用</span>
+    </div>
+    <div id="wh-week-nav" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <button class="btn-sm" onclick="whNavWeek(-1)"><i class="ti ti-chevron-left" style="font-size:12px"></i></button>
+      <span id="wh-week-label" style="font-size:12px;flex:1;text-align:center"></span>
+      <button class="btn-sm" onclick="whNavWeek(1)"><i class="ti ti-chevron-right" style="font-size:12px"></i></button>
+    </div>
+    <div class="work-hours-grid" id="wh-grid"></div>
+    <div class="modal-actions" style="margin-top:1rem">
+      <button onclick="clearDayWH()" style="font-size:12px;color:var(--red);border-color:var(--red)"><i class="ti ti-trash"></i> この週をクリア</button>
+      <button onclick="closeModal('settings-modal')">キャンセル</button>
+      <button class="btn-primary" onclick="saveSettings()"><i class="ti ti-device-floppy"></i> 保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- クイック追加モーダル -->
 <div class="modal-wrap" id="quick-modal">
   <div class="modal" style="width:320px">
@@ -541,6 +576,10 @@ let log=JSON.parse(localStorage.getItem('tt-log')||'[]');
 let nextQ=JSON.parse(localStorage.getItem('tt-next')||'[]');
 let selDate=new Date(); selDate.setHours(0,0,0,0);
 let mcBase=new Date(selDate); mcBase.setDate(1);
+let dayMemos=JSON.parse(localStorage.getItem('dp-memos')||'{}');
+let defaultWH=parseFloat(localStorage.getItem('dp-default-wh')||'8');
+let dayWH=JSON.parse(localStorage.getItem('dp-day-wh')||'{}');
+let whNavBase=new Date(); whNavBase.setDate(whNavBase.getDate()-((whNavBase.getDay()+6)%7));whNavBase.setHours(0,0,0,0);
 
 // timer
 let tMode='work',tBtype='rest',tSetMin=25,tElSec=0,tStart=null,tPaused=0,tState='idle',tRAF=null;
@@ -595,101 +634,6 @@ function showPage(id){
   if(id==='log'){renderLog();renderLogMetrics();}
 }
 
-// ===== ICS =====
-function parseICS(txt){
-  const evs=[];
-  const lines=txt.replace(/\r\n[ \t]/g,'').replace(/\r\n/g,'\n').split('\n');
-  let cur=null;
-  for(const l of lines){
-    if(l==='BEGIN:VEVENT'){cur={};}
-    else if(l==='END:VEVENT'&&cur){if(cur.start&&cur.summary)evs.push(cur);cur=null;}
-    else if(cur){
-      const ci=l.indexOf(':');if(ci<0)continue;
-      const key=l.slice(0,ci),val=l.slice(ci+1).trim();
-      const k=key.split(';')[0];
-      if(k==='SUMMARY')cur.summary=val.replace(/\\,/g,',').replace(/\\n/g,' ');
-      else if(k==='DTSTART')cur.start=pDate(key,val);
-      else if(k==='DTEND')cur.end=pDate(key,val);
-      else if(k==='LOCATION')cur.location=val.replace(/\\,/g,',');
-      else if(k==='DESCRIPTION')cur.description=val.replace(/\\n/g,'\n').replace(/\\,/g,',');
-    }
-  }
-  return evs;
-}
-function pDate(key,val){
-  if(key.includes('VALUE=DATE')||val.length===8){
-    return new Date(val.slice(0,4)+'-'+val.slice(4,6)+'-'+val.slice(6,8)+'T00:00:00');
-  }
-  const y=val.slice(0,4),mo=val.slice(4,6),d=val.slice(6,8),h=val.slice(9,11),mi=val.slice(11,13),s=val.slice(13,15);
-  return val.endsWith('Z')?new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}Z`):new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}`);
-}
-function setStatus(msg,type){
-  const el=document.getElementById('ics-status');
-  if(!msg){el.innerHTML='';el.className='status-msg';return;}
-  el.className='status-msg '+(type||'');
-  if(type==='loading')el.innerHTML='<div class="spinner"></div>'+msg;
-  else el.innerHTML='<i class="ti ti-'+(type==='ok'?'circle-check':'alert-circle')+'" style="font-size:14px"></i>'+msg;
-}
-function saveICSUrl(){
-  const url=document.getElementById('ics-url').value.trim();
-  if(url) localStorage.setItem('ics-registered-url',url);
-}
-function loadSavedUrl(){
-  const url=localStorage.getItem('ics-registered-url')||'';
-  document.getElementById('ics-url').value=url;
-}
-function openOutlook(){
-  const url=document.getElementById('ics-url').value.trim();
-  if(!url){setStatus('URLを入力・登録してください','err');return;}
-  window.open(url,'_blank');
-  setStatus('Outlookを開きました。ICSをダウンロード後「ICSを取り込む」を押してください','ok');
-}
-function loadICSFile(input){
-  const file=input.files[0];
-  if(!file){return;}
-  setStatus('読み込んでいます…','loading');
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const txt=e.target.result;
-      outlookEvs=parseICS(txt);
-      if(!outlookEvs.length)throw new Error('予定が見つかりません');
-      const now=new Date();
-      const ts=`${now.getMonth()+1}/${now.getDate()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-      localStorage.setItem('ics-last-imported',ts);
-      document.getElementById('last-imported').textContent='最終取り込み: '+ts;
-      document.getElementById('sync-badge').style.display='';
-      document.getElementById('sync-text').textContent='Outlook '+outlookEvs.length+'件';
-      setStatus(outlookEvs.length+'件の予定を取り込みました','ok');
-      renderAll();
-      input.value='';
-    }catch(err){setStatus('ICSファイルの読み込みに失敗しました','err');}
-  };
-  reader.onerror=()=>setStatus('ファイルの読み込みに失敗しました','err');
-  reader.readAsText(file,'UTF-8');
-}
-function loadDemo(){
-  const now=new Date();
-  const mk=(dOff,h,m,dh,dm,cat,title,loc)=>{
-    const s=new Date(now);s.setDate(now.getDate()+dOff);s.setHours(h,m,0,0);
-    const e=new Date(s);e.setHours(h+(dh||1),m+(dm||0),0,0);
-    return{start:s,end:e,summary:title,category:cat,location:loc,source:'outlook'};
-  };
-  outlookEvs=[
-    mk(0,9,30,0,30,'meeting','朝会スタンドアップ','Teams'),
-    mk(0,11,0,1,0,'meeting','プロダクトレビュー','会議室A'),
-    mk(0,14,0,2,0,'meeting','スプリント計画','Zoom'),
-    mk(0,16,30,0,30,'admin','週次レポート確認'),
-    mk(1,10,0,1,0,'meeting','1on1 田中さん'),
-    mk(1,14,0,1,0,'focus','集中作業'),
-    mk(2,9,0,2,0,'meeting','クォータリーレビュー'),
-    mk(-1,10,0,1,0,'meeting','昨日のミーティング'),
-  ];
-  document.getElementById('sync-badge').style.display='';
-  document.getElementById('sync-text').textContent='デモ '+outlookEvs.length+'件';
-  setStatus('デモデータ '+outlookEvs.length+'件を読み込みました','ok');
-  renderAll();
-}
 
 // ===== EVENTS =====
 function getDayEvs(date){
@@ -722,15 +666,22 @@ function catStyle(cat,src){
 }
 
 // ===== RENDER =====
-function renderAll(){renderMetrics();renderTimeline();renderMiniCal();renderTaskSidebar();}
+function renderAll(){renderMetrics();renderTimeline();renderMiniCal();renderTaskSidebar();renderDayMemo();renderTodayWH();renderVsPanel();}
+function getDayWH(date){
+  const key=date.toISOString().slice(0,10);
+  return dayWH[key]!==undefined?dayWH[key]:defaultWH;
+}
 function renderMetrics(){
   const evs=getDayEvs(selDate);
   const busy=evs.reduce((a,e)=>{const s=new Date(e.start),en=e.end?new Date(e.end):new Date(+new Date(e.start)+3600000);return a+Math.round((en-s)/60000);},0);
-  const free=Math.max(0,9*60-busy);
+  const wh=getDayWH(selDate);
+  const free=Math.max(0,wh*60-busy);
+  const util=wh>0?Math.min(100,Math.round(busy/(wh*60)*100)):0;
   document.getElementById('planner-metrics').innerHTML=`
     <div class="metric"><div class="metric-label">今日の予定</div><div class="metric-value">${evs.length}</div><div class="metric-sub">件</div></div>
-    <div class="metric"><div class="metric-label">会議時間</div><div class="metric-value">${fmtMins(busy)}</div><div class="metric-sub">合計</div></div>
-    <div class="metric"><div class="metric-label">空き時間</div><div class="metric-value">${fmtMins(free)}</div><div class="metric-sub">9:00〜18:00</div></div>`;
+    <div class="metric"><div class="metric-label">予定時間</div><div class="metric-value">${fmtMins(busy)}</div><div class="metric-sub">合計</div></div>
+    <div class="metric"><div class="metric-label">空き時間</div><div class="metric-value">${fmtMins(free)}</div><div class="metric-sub">稼働${wh}h基準</div></div>
+    <div class="metric"><div class="metric-label">稼働率</div><div class="metric-value">${util}%</div><div class="metric-sub">予定/稼働時間</div></div>`;
 }
 function renderTimeline(){
   const tl=document.getElementById('timeline');
@@ -1214,11 +1165,10 @@ function renderCatLegend(){
 // ===== バックアップ・復元 =====
 function exportBackup(){
   const data={
-    version:1,
+    version:2,
     exportedAt:new Date().toISOString(),
     localEvs,plannerTasks,log,nextQ,templates,
-    icsUrl:localStorage.getItem('ics-registered-url')||'',
-    lastImported:localStorage.getItem('ics-last-imported')||''
+    dayMemos,defaultWH,dayWH
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -1241,11 +1191,15 @@ function importBackup(input){
       log=data.log||[];
       nextQ=data.nextQ||[];
       templates=data.templates||[];
+      dayMemos=data.dayMemos||{};
+      defaultWH=data.defaultWH||8;
+      dayWH=data.dayWH||{};
       saveLocal();saveLog();
       localStorage.setItem('tt-next',JSON.stringify(nextQ));
       localStorage.setItem('dp-templates',JSON.stringify(templates));
-      if(data.icsUrl)localStorage.setItem('ics-registered-url',data.icsUrl);
-      if(data.lastImported){localStorage.setItem('ics-last-imported',data.lastImported);document.getElementById('last-imported').textContent='最終取り込み: '+data.lastImported;}
+      localStorage.setItem('dp-memos',JSON.stringify(dayMemos));
+      localStorage.setItem('dp-default-wh',defaultWH);
+      localStorage.setItem('dp-day-wh',JSON.stringify(dayWH));
       renderAll();renderLog();renderLogMetrics();renderNextQ();renderCatLegend();
       toast('バックアップから復元しました');
     }catch(err){alert('復元に失敗しました。有効なバックアップファイルを選択してください。');}
@@ -1254,11 +1208,105 @@ function importBackup(input){
   reader.readAsText(file,'UTF-8');
 }
 
+// ===== 日次メモ =====
+function dateKey(d){return d.toISOString().slice(0,10);}
+function saveDayMemo(){
+  const v=document.getElementById('day-memo').value;
+  dayMemos[dateKey(selDate)]=v;
+  localStorage.setItem('dp-memos',JSON.stringify(dayMemos));
+  const s=document.getElementById('memo-saved');
+  s.textContent='保存済み';setTimeout(()=>s.textContent='',1500);
+}
+function renderDayMemo(){
+  const el=document.getElementById('day-memo');
+  if(el)el.value=dayMemos[dateKey(selDate)]||'';
+}
+
+// ===== 稼働時間パネル =====
+function renderTodayWH(){
+  const wh=getDayWH(selDate);
+  const key=dateKey(selDate);
+  const isCustom=dayWH[key]!==undefined;
+  const badge=document.getElementById('today-wh-badge');
+  const info=document.getElementById('today-wh-info');
+  if(badge)badge.textContent=wh+'h';
+  if(info)info.innerHTML=isCustom
+    ?`<i class="ti ti-calendar-check" style="font-size:12px;color:var(--green-text)"></i> 個別設定済み（デフォルト: ${defaultWH}h）`
+    :`<i class="ti ti-settings" style="font-size:12px;color:var(--text3)"></i> デフォルト値を使用`;
+}
+
+function renderVsPanel(){
+  const el=document.getElementById('vs-panel');if(!el)return;
+  const wh=getDayWH(selDate);
+  const evs=getDayEvs(selDate);
+  const busy=evs.reduce((a,e)=>{const s=new Date(e.start),en=e.end?new Date(e.end):new Date(+s+3600000);return a+Math.round((en-s)/60000);},0);
+  const logToday=log.filter(l=>{
+    if(!l.startStr)return false;
+    const n=new Date();
+    return selDate.toDateString()===n.toDateString()||selDate.toDateString()===new Date(l.startStr).toDateString();
+  });
+  const actual=logToday.reduce((a,l)=>a+(l.elapsedMin||0),0);
+  const whMin=wh*60;
+  const pctPlan=Math.min(100,Math.round(busy/whMin*100));
+  const pctActual=Math.min(100,Math.round(actual/whMin*100));
+  el.innerHTML=`
+    <div style="margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:2px"><span>予定</span><span>${fmtMins(busy)} / ${wh}h</span></div>
+      <div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pctPlan}%;background:var(--accent);border-radius:3px"></div></div>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:2px"><span>実績</span><span>${fmtMins(actual)} / ${wh}h</span></div>
+      <div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pctActual}%;background:var(--green);border-radius:3px"></div></div>
+    </div>`;
+}
+
+// ===== 設定 =====
+function openSettings(){
+  document.getElementById('default-wh').value=defaultWH;
+  renderWHGrid();
+  document.getElementById('settings-modal').classList.add('open');
+}
+function whNavWeek(dir){
+  whNavBase.setDate(whNavBase.getDate()+dir*7);
+  renderWHGrid();
+}
+function renderWHGrid(){
+  const mon=new Date(whNavBase);
+  const now=new Date();now.setHours(0,0,0,0);
+  const dowLabels=['月','火','水','木','金','土','日'];
+  const grid=document.getElementById('wh-grid');
+  const label=document.getElementById('wh-week-label');
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  label.textContent=`${mon.getMonth()+1}/${mon.getDate()} 〜 ${sun.getMonth()+1}/${sun.getDate()}`;
+  grid.innerHTML='';
+  for(let i=0;i<7;i++){
+    const d=new Date(mon);d.setDate(mon.getDate()+i);
+    const key=dateKey(d);
+    const isToday=d.getTime()===now.getTime();
+    const div=document.createElement('div');
+    div.className='wh-day'+(isToday?' wh-today':'');
+    div.innerHTML=`<div class="wh-dow">${dowLabels[i]}<br><span style="font-size:9px">${d.getMonth()+1}/${d.getDate()}</span></div>
+      <input type="number" class="wh-input" data-key="${key}" min="0" max="24" step="0.5" value="${dayWH[key]!==undefined?dayWH[key]:''}" placeholder="${defaultWH}">`;
+    grid.appendChild(div);
+  }
+}
+function saveSettings(){
+  defaultWH=parseFloat(document.getElementById('default-wh').value)||8;
+  localStorage.setItem('dp-default-wh',defaultWH);
+  document.querySelectorAll('.wh-input').forEach(inp=>{
+    const key=inp.dataset.key;const v=inp.value.trim();
+    if(v===''){delete dayWH[key];}
+    else{dayWH[key]=parseFloat(v)||defaultWH;}
+  });
+  localStorage.setItem('dp-day-wh',JSON.stringify(dayWH));
+  closeModal('settings-modal');renderAll();toast('設定を保存しました');
+}
+function clearDayWH(){
+  document.querySelectorAll('.wh-input').forEach(inp=>{inp.value='';});
+}
+
 // ===== INIT =====
 loadTBTasks();
-loadSavedUrl();
-const _li=localStorage.getItem('ics-last-imported');
-if(_li) document.getElementById('last-imported').textContent='最終取り込み: '+_li;
 buildPresets([5,10,25,45,60],25,'w');
 drawTimer(1);
 renderNextQ();
@@ -1269,6 +1317,9 @@ window.addEventListener('focus',()=>{loadTBTasks();renderTaskSidebar();});
 renderCatLegend();
 buildCatGuide('ev-guide');
 buildCatGuide('q-guide');
+renderDayMemo();
+renderTodayWH();
+renderVsPanel();
 </script>
 </body>
 </html>
