@@ -149,10 +149,11 @@ function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnd, isDragging }
   );
 }
 
-// ===== KANBAN (2列グリッド) =====
-function KanbanView({ tasks, onEdit, onDelete, onMove, sortKey, sortDir }) {
-  const [dragging, setDragging] = useState(null);
-  const [over, setOver] = useState(null);
+// ===== KANBAN (2列グリッド + 列内並び替え対応) =====
+function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortDir }) {
+  const [draggingId, setDraggingId] = useState(null);
+  const [overCol, setOverCol] = useState(null);
+  const [overCardId, setOverCardId] = useState(null);
 
   const sortTasks = ts => {
     const arr = [...ts];
@@ -161,8 +162,21 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, sortKey, sortDir }) {
     else if(sortKey === "title") arr.sort((a,b) => sortDir==="asc" ? a.title.localeCompare(b.title,"ja") : b.title.localeCompare(a.title,"ja"));
     else if(sortKey === "dueDate") arr.sort((a,b) => { const da=a.dueDate||"9999",db=b.dueDate||"9999"; return sortDir==="asc"?da.localeCompare(db):db.localeCompare(da); });
     else if(sortKey === "createdAt") arr.sort((a,b) => sortDir==="asc" ? (a.createdAt||0)-(b.createdAt||0) : (b.createdAt||0)-(a.createdAt||0));
-    else arr.sort((a,b) => a.order - b.order);
+    else arr.sort((a,b) => (a.order??0) - (b.order??0));
     return arr;
+  };
+
+  const handleDrop = (e, st, targetId) => {
+    e.preventDefault();
+    if(!draggingId || draggingId === targetId) { setDraggingId(null); setOverCol(null); setOverCardId(null); return; }
+    const dragTask = tasks.find(t => t.id === draggingId);
+    if(!dragTask) return;
+    if(dragTask.status !== st) {
+      onMove(draggingId, st, targetId);
+    } else {
+      onReorder(draggingId, targetId, st);
+    }
+    setDraggingId(null); setOverCol(null); setOverCardId(null);
   };
 
   return (
@@ -173,10 +187,10 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, sortKey, sortDir }) {
         return (
           <div key={st}
             className={`min-h-[200px] rounded-xl border ${col.accent} ${col.bg} p-3 transition-colors
-              ${over === st ? "ring-2 ring-violet-400/40 border-violet-400/40" : ""}`}
-            onDragOver={e => { e.preventDefault(); setOver(st); }}
-            onDragLeave={() => setOver(null)}
-            onDrop={() => { if(dragging) onMove(dragging, st); setDragging(null); setOver(null); }}
+              ${overCol === st && !overCardId ? "ring-2 ring-violet-400/40" : ""}`}
+            onDragOver={e => { e.preventDefault(); setOverCol(st); }}
+            onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)){setOverCol(null);setOverCardId(null);} }}
+            onDrop={e => handleDrop(e, st, null)}
           >
             <div className="mb-2 flex items-center justify-between">
               <span className={`text-[13px] font-semibold ${col.header}`}>{STATUS_LABEL[st]||st}</span>
@@ -184,9 +198,17 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, sortKey, sortDir }) {
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               {colTasks.map(t => (
-                <TaskCard key={t.id} task={t} onEdit={onEdit} onDelete={onDelete}
-                  onDragStart={id => setDragging(id)} onDragEnd={() => setDragging(null)}
-                  isDragging={dragging === t.id} />
+                <div key={t.id}
+                  className={`rounded-md transition-all ${overCardId===t.id && draggingId!==t.id ? "ring-2 ring-violet-400/60 ring-offset-1 ring-offset-transparent" : ""}`}
+                  onDragOver={e => { e.preventDefault(); e.stopPropagation(); setOverCardId(t.id); }}
+                  onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverCardId(null); }}
+                  onDrop={e => { e.stopPropagation(); handleDrop(e, st, t.id); }}
+                >
+                  <TaskCard task={t} onEdit={onEdit} onDelete={onDelete}
+                    onDragStart={id => { setDraggingId(id); setOverCol(st); }}
+                    onDragEnd={() => { setDraggingId(null); setOverCol(null); setOverCardId(null); }}
+                    isDragging={draggingId === t.id} />
+                </div>
               ))}
             </div>
           </div>
@@ -361,7 +383,37 @@ export default function App() {
   };
 
   const del = id => setTasks(ts => ts.filter(t => t.id !== id));
-  const move = (id, status) => setTasks(ts => ts.map(t => t.id===id ? {...t, status} : t));
+
+  const move = (id, status, targetId) => {
+    setTasks(ts => {
+      const colTasks = ts.filter(t => t.status === status).sort((a,b) => (a.order??0)-(b.order??0));
+      const insertIdx = targetId ? colTasks.findIndex(t => t.id === targetId) : colTasks.length;
+      const baseOrder = insertIdx >= 0 ? insertIdx : colTasks.length;
+      return ts.map(t => t.id===id ? {...t, status, order: baseOrder - 0.5} : t)
+               .map((t,_,arr) => {
+                 if(t.status !== status) return t;
+                 const sorted = [...arr].filter(x=>x.status===status).sort((a,b)=>(a.order??0)-(b.order??0));
+                 const idx = sorted.findIndex(x=>x.id===t.id);
+                 return {...t, order: idx};
+               });
+    });
+  };
+
+  const reorder = (dragId, targetId, status) => {
+    setTasks(ts => {
+      const colTasks = ts.filter(t => t.status === status).sort((a,b) => (a.order??0)-(b.order??0));
+      const fromIdx = colTasks.findIndex(t => t.id === dragId);
+      const toIdx   = targetId ? colTasks.findIndex(t => t.id === targetId) : colTasks.length - 1;
+      if(fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return ts;
+      const reordered = [...colTasks];
+      const [moved] = reordered.splice(fromIdx, 1);
+      reordered.splice(toIdx, 0, moved);
+      const orderMap = {};
+      reordered.forEach((t, i) => { orderMap[t.id] = i; });
+      return ts.map(t => t.status === status && orderMap[t.id] !== undefined ? {...t, order: orderMap[t.id]} : t);
+    });
+  };
+
   const statusChange = (id, status) => setTasks(ts => ts.map(t => t.id===id ? {...t, status} : t));
 
   const toggleSort = key => {
@@ -472,7 +524,7 @@ export default function App() {
 
       {/* CONTENT */}
       <main className="p-5">
-        {view === "kanban"    && <KanbanView    tasks={filtered} onEdit={t => setModal(t)} onDelete={del} onMove={move} sortKey={sortKey} sortDir={sortDir} />}
+        {view === "kanban"    && <KanbanView    tasks={filtered} onEdit={t => setModal(t)} onDelete={del} onMove={move} onReorder={reorder} sortKey={sortKey} sortDir={sortDir} />}
         {view === "list"      && <ListView      tasks={filtered} onEdit={t => setModal(t)} onDelete={del} onStatusChange={statusChange} />}
         {view === "dashboard" && <Dashboard     tasks={tasks} />}
       </main>
