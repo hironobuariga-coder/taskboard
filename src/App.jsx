@@ -445,6 +445,183 @@ function Dashboard({ tasks }) {
   );
 }
 
+// ===== BACKUP MODAL =====
+function BackupModal({ tasks, onRestore, onClose }) {
+  const [msg,     setMsg]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [pending, setPending] = useState(null);
+  const fileRef = useRef();
+
+  const today = () => new Date().toISOString().slice(0,10).replace(/-/g,"");
+
+  // バックアップ：Supabaseから最新データを取得してJSONとして保存
+  const handleExport = async () => {
+    setLoading(true);
+    setMsg("");
+    try {
+      let exportTasks = tasks; // フォールバック：現在のstate
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("tasks").select("*").order("order_index", { ascending: true });
+        if (!error && data) exportTasks = data.map(fromDbTask);
+      }
+      const payload = {
+        version:    2,
+        exportedAt: new Date().toISOString(),
+        source:     supabase ? "supabase" : "localStorage",
+        tasks:      exportTasks,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `taskboard_backup_${today()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setMsg(`✓ バックアップ保存（タスク${exportTasks.length}件・${supabase ? "Supabaseから取得" : "ローカルから取得"}）`);
+    } catch(e) {
+      setMsg(`⚠ バックアップ失敗: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 復元ファイル選択
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.tasks || !Array.isArray(data.tasks)) throw new Error("形式が不正です");
+        setPending(data);
+        setConfirm(true);
+        setMsg("");
+      } catch {
+        setMsg("⚠ ファイルの形式が正しくありません。taskboardのバックアップファイルを選択してください。");
+      }
+    };
+    reader.readAsText(file, "UTF-8");
+    e.target.value = "";
+  };
+
+  // 復元実行：Supabase + state 両方に書き戻す
+  const handleRestore = async () => {
+    if (!pending) return;
+    setLoading(true);
+    setConfirm(false);
+    try {
+      // Supabaseに書き戻し
+      if (supabase) {
+        // 既存データを全削除してから upsert
+        await supabase.from("tasks").delete().neq("id", "___never___");
+        if (pending.tasks.length > 0) {
+          await supabase.from("tasks").upsert(pending.tasks.map(toDbTask));
+        }
+      }
+      // localStorageにも書き戻し
+      try { localStorage.setItem("tasks", JSON.stringify(pending.tasks)); } catch {}
+      // stateを更新（親に委譲）
+      onRestore(pending.tasks);
+      setMsg(`✓ 復元しました（タスク${pending.tasks.length}件）`);
+    } catch(e) {
+      setMsg(`⚠ 復元失敗: ${e.message}`);
+    } finally {
+      setLoading(false);
+      setPending(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl border border-violet-500/20 bg-[#1c1c2e] p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold text-[#e2e0ff]">バックアップ / 復元</h2>
+          <button onClick={onClose} className="p-1.5 rounded text-[#9d9bbf] hover:text-[#e2e0ff] hover:bg-[#25253a]">
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+
+        <p className="text-[12px] text-[#9d9bbf]">
+          {supabase ? "Supabaseの最新データをJSONで保存・復元します。" : "ローカルデータをJSONで保存・復元します。"}
+        </p>
+
+        {/* 現在のデータ件数 */}
+        <div className="rounded-xl border border-violet-500/10 bg-[#25253a] px-4 py-3 flex items-center gap-3">
+          <Icon name="database" size={16} className="text-violet-400 shrink-0" />
+          <div>
+            <p className="text-[12px] font-medium text-[#e2e0ff]">現在のタスク数</p>
+            <p className="text-[11px] text-[#9d9bbf]">{tasks.length}件</p>
+          </div>
+          {supabase && (
+            <span className="ml-auto text-[11px] text-emerald-400 flex items-center gap-1">
+              <Icon name="cloud" size={11} /> Supabase連携中
+            </span>
+          )}
+        </div>
+
+        {/* バックアップボタン */}
+        <button onClick={handleExport} disabled={loading}
+          className="w-full flex items-center gap-3 rounded-xl border border-violet-500/15 bg-[#25253a] hover:bg-[#2d2b55] px-4 py-3 transition-colors text-left disabled:opacity-50">
+          <Icon name="download" size={18} className="text-emerald-400 shrink-0" />
+          <div>
+            <p className="text-[13px] font-medium text-[#e2e0ff]">バックアップを保存</p>
+            <p className="text-[11px] text-[#9d9bbf]">taskboard_backup_{today()}.json</p>
+          </div>
+        </button>
+
+        {/* 復元ボタン */}
+        <button onClick={() => fileRef.current?.click()} disabled={loading}
+          className="w-full flex items-center gap-3 rounded-xl border border-violet-500/15 bg-[#25253a] hover:bg-[#2d2b55] px-4 py-3 transition-colors text-left disabled:opacity-50">
+          <Icon name="upload" size={18} className="text-amber-400 shrink-0" />
+          <div>
+            <p className="text-[13px] font-medium text-[#e2e0ff]">バックアップから復元</p>
+            <p className="text-[11px] text-[#9d9bbf]">.json ファイルを選択</p>
+          </div>
+        </button>
+        <input ref={fileRef} type="file" accept=".json" onChange={handleFileSelect} className="hidden" />
+
+        {/* 復元確認ダイアログ */}
+        {confirm && pending && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 space-y-3">
+            <p className="text-[13px] font-semibold text-amber-300">⚠ 復元の確認</p>
+            <p className="text-[12px] text-amber-200/80">
+              バックアップ日時：{new Date(pending.exportedAt).toLocaleString("ja-JP")}<br />
+              タスク {pending.tasks.length}件
+              {pending.source === "supabase" ? "（Supabaseバックアップ）" : ""}
+            </p>
+            <p className="text-[11px] text-amber-300/70">※ 現在のデータはすべて上書きされます。</p>
+            <div className="flex gap-2">
+              <button onClick={() => { setConfirm(false); setPending(null); }}
+                className="flex-1 py-2 rounded-xl border border-violet-500/20 text-[12px] text-[#9d9bbf] hover:bg-[#25253a] transition-colors">キャンセル</button>
+              <button onClick={handleRestore}
+                className="flex-1 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-[12px] font-semibold text-white transition-colors">復元する</button>
+            </div>
+          </div>
+        )}
+
+        {loading && (
+          <p className="text-[12px] text-[#9d9bbf] flex items-center gap-2">
+            <Icon name="refresh" size={12} className="animate-spin" /> 処理中...
+          </p>
+        )}
+        {msg && (
+          <p className={`text-[12px] px-3 py-2 rounded-lg ${msg.startsWith("✓") ? "bg-emerald-950/40 text-emerald-400" : "bg-red-950/40 text-red-400"}`}>
+            {msg}
+          </p>
+        )}
+
+        <div className="rounded-xl border border-violet-500/10 bg-[#25253a]/60 p-3 text-[11px] text-[#5e5c80] space-y-1">
+          <p className="font-medium text-[#9d9bbf]">💡 推奨運用</p>
+          <p>月1回バックアップを保存しておくと、誤削除やシステム障害時に復元できます。</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ===== MAIN APP =====
 export default function App() {
   // ── State ──────────────────────────────────────────────────
@@ -454,6 +631,7 @@ export default function App() {
   });
   const [syncing,   setSyncing]   = useState(false);
   const [syncError, setSyncError] = useState(null);
+  const [showBackup, setShowBackup] = useState(false);
 
   const [view,         setView]         = useState("kanban");
   const [modal,        setModal]        = useState(null);
@@ -627,6 +805,12 @@ export default function App() {
         <div className="ml-auto flex items-center gap-3">
           {/* 同期ステータス表示 */}
           <SyncIndicator syncing={syncing} syncError={syncError} />
+          {/* バックアップボタン */}
+          <button onClick={() => setShowBackup(true)}
+            className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] transition-colors"
+            style={{background:"#25253a", border:"0.5px solid rgba(124,111,205,0.2)", color:"#9d9bbf"}}>
+            <Icon name="database-export" size={14} /> バックアップ
+          </button>
           <button onClick={() => setModal({})}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-white"
             style={{background:"#7c6fcd"}}>
@@ -694,6 +878,16 @@ export default function App() {
       </main>
 
       {modal !== null && <Modal task={Object.keys(modal).length ? modal : null} onSave={save} onClose={() => setModal(null)} />}
+      {showBackup && (
+        <BackupModal
+          tasks={tasks}
+          onRestore={restoredTasks => {
+            setTasksState(restoredTasks);
+            setShowBackup(false);
+          }}
+          onClose={() => setShowBackup(false)}
+        />
+      )}
     </div>
   );
 }
