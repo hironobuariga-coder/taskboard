@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { supabase, sbEnabled } from "./supabaseClient";
 
 // ===== DESIGN TOKENS (案C: ダーク + パープルアクセント) =====
 // bg:      #13131f / #1c1c2e / #25253a
@@ -35,10 +36,74 @@ const DEFAULTS = [
   { id: genId(), title: "ドキュメントの整備",      description: "README と API仕様書の更新",   status: "Done",        priority: "Low",    dueDate: "", estHours: 2, actHours: 2, order: 3, createdAt: Date.now() - 86400000*3 },
 ];
 
+// ===== SUPABASE ヘルパー =====
+// DB行 → アプリのtaskオブジェクトに変換
+const fromDbTask = r => ({
+  id:          r.id,
+  title:       r.title       ?? "",
+  description: r.description ?? "",
+  status:      r.status      ?? "Todo",
+  priority:    r.priority    ?? "Medium",
+  dueDate:     r.due_date    ?? "",
+  estHours:    r.est_hours   ?? 0,
+  actHours:    r.act_hours   ?? 0,
+  order:       r.order_index ?? 0,
+  createdAt:   r.created_at  ?? Date.now(),
+  updatedAt:   r.updated_at  ?? Date.now(),
+});
+
+// アプリのtaskオブジェクト → DB行に変換
+const toDbTask = t => ({
+  id:          t.id,
+  title:       t.title       ?? "",
+  description: t.description ?? "",
+  status:      t.status      ?? "Todo",
+  priority:    t.priority    ?? "Medium",
+  due_date:    t.dueDate     ?? "",
+  est_hours:   parseFloat(t.estHours)  || 0,
+  act_hours:   parseFloat(t.actHours)  || 0,
+  order_index: t.order       ?? 0,
+  created_at:  t.createdAt   ?? Date.now(),
+  updated_at:  Date.now(),
+});
+
+// IDベース・updated_at新しい方優先でマージ
+const mergeByUpdatedAt = (local, remote) => {
+  const map = new Map();
+  local.forEach(t => map.set(t.id, t));
+  remote.forEach(t => {
+    const existing = map.get(t.id);
+    const remoteTs = t.updatedAt ?? t.updated_at ?? 0;
+    const localTs  = existing?.updatedAt ?? existing?.updated_at ?? 0;
+    if (!existing || remoteTs > localTs) map.set(t.id, t);
+  });
+  return Array.from(map.values());
+};
+
 // ===== TABLER ICON COMPONENTS =====
 const Icon = ({ name, size = 16, className = "" }) => (
   <i className={`ti ti-${name} ${className}`} style={{ fontSize: size }} aria-hidden="true" />
 );
+
+// ===== SYNC STATUS INDICATOR =====
+function SyncIndicator({ syncing, syncError }) {
+  if (!sbEnabled) return null;
+  if (syncing) return (
+    <span className="flex items-center gap-1 text-[11px]" style={{color:"#9d9bbf"}}>
+      <Icon name="refresh" size={11} className="animate-spin" /> 同期中
+    </span>
+  );
+  if (syncError) return (
+    <span className="flex items-center gap-1 text-[11px]" style={{color:"#EF9F27"}} title={syncError}>
+      <Icon name="wifi-off" size={11} /> オフライン
+    </span>
+  );
+  return (
+    <span className="flex items-center gap-1 text-[11px]" style={{color:"#1D9E75"}}>
+      <Icon name="cloud-check" size={11} /> 同期済み
+    </span>
+  );
+}
 
 // ===== MODAL =====
 function Modal({ task, onSave, onClose }) {
@@ -150,10 +215,9 @@ function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnd, isDragging }
 }
 
 // ===== KANBAN =====
-// overInfo: { id: カードID, pos: "before"|"after" } でドロップ位置を管理
 function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortDir }) {
   const [draggingId, setDraggingId] = useState(null);
-  const [overInfo, setOverInfo] = useState(null); // {col, cardId, pos}
+  const [overInfo, setOverInfo] = useState(null);
 
   const sortTasks = ts => {
     const arr = [...ts];
@@ -383,30 +447,100 @@ function Dashboard({ tasks }) {
 
 // ===== MAIN APP =====
 export default function App() {
-  const [tasks, setTasks] = useState(() => {
+  // ── State ──────────────────────────────────────────────────
+  const [tasks, setTasksState] = useState(() => {
     try { const s = localStorage.getItem("tasks"); return s ? JSON.parse(s) : DEFAULTS; }
     catch { return DEFAULTS; }
   });
-  const [view, setView] = useState("kanban");
-  const [modal, setModal] = useState(null);
-  const [search, setSearch] = useState("");
+  const [syncing,   setSyncing]   = useState(false);
+  const [syncError, setSyncError] = useState(null);
+
+  const [view,         setView]         = useState("kanban");
+  const [modal,        setModal]        = useState(null);
+  const [search,       setSearch]       = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const [filterPri, setFilterPri] = useState("");
-  const [sortKey, setSortKey] = useState("");
-  const [sortDir, setSortDir] = useState("asc");
+  const [filterPri,    setFilterPri]    = useState("");
+  const [sortKey,      setSortKey]      = useState("");
+  const [sortDir,      setSortDir]      = useState("asc");
 
+  // ── localStorage + Supabase 二重保存 ──────────────────────
+  const setTasks = useCallback((updater) => {
+    setTasksState(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      // localStorage に即時保存
+      try { localStorage.setItem("tasks", JSON.stringify(next)); } catch {}
+      // Supabase にバックグラウンド同期
+      if (supabase) {
+        supabase.from("tasks").upsert(next.map(toDbTask))
+          .then(({ error }) => {
+            if (error) console.warn("[Supabase] upsert失敗:", error.message);
+          });
+      }
+      return next;
+    });
+  }, []);
+
+  // タスク削除（Supabaseからも削除）
+  const delFromSupabase = useCallback((id) => {
+    if (!supabase) return;
+    supabase.from("tasks").delete().eq("id", id)
+      .then(({ error }) => {
+        if (error) console.warn("[Supabase] delete失敗:", error.message);
+      });
+  }, []);
+
+  // ── 初回マウント：Supabase → localStorage マージ ──────────
   useEffect(() => {
-    try { localStorage.setItem("tasks", JSON.stringify(tasks)); } catch {}
-  }, [tasks]);
+    if (!supabase) return;
+    setSyncing(true);
+    setSyncError(null);
 
+    (async () => {
+      try {
+        const { data: remote, error } = await supabase
+          .from("tasks")
+          .select("*")
+          .order("order_index", { ascending: true });
+
+        if (error) throw error;
+
+        const localTasks = (() => {
+          try { const s = localStorage.getItem("tasks"); return s ? JSON.parse(s) : DEFAULTS; }
+          catch { return DEFAULTS; }
+        })();
+
+        const remoteMapped = (remote ?? []).map(fromDbTask);
+        const merged = mergeByUpdatedAt(localTasks, remoteMapped);
+        setTasksState(merged);
+        try { localStorage.setItem("tasks", JSON.stringify(merged)); } catch {}
+
+        // ローカルのみ存在するタスクをSupabaseに書き戻す
+        const remoteIds = new Set((remote ?? []).map(r => r.id));
+        const localOnly = localTasks.filter(t => !remoteIds.has(t.id));
+        if (localOnly.length > 0) {
+          await supabase.from("tasks").upsert(localOnly.map(toDbTask));
+        }
+      } catch (err) {
+        console.warn("[Supabase] 初回同期失敗（ローカルで継続）:", err.message);
+        setSyncError(err.message);
+      } finally {
+        setSyncing(false);
+      }
+    })();
+  }, []);
+
+  // ── タスク操作 ─────────────────────────────────────────────
   const save = t => {
-    setTasks(ts => t.id && ts.find(x => x.id===t.id)
-      ? ts.map(x => x.id===t.id ? {...t} : x)
-      : [...ts, { ...t, id: genId(), order: ts.length, createdAt: Date.now() }]);
+    setTasks(ts => t.id && ts.find(x => x.id === t.id)
+      ? ts.map(x => x.id === t.id ? { ...t, updatedAt: Date.now() } : x)
+      : [...ts, { ...t, id: genId(), order: ts.length, createdAt: Date.now(), updatedAt: Date.now() }]);
     setModal(null);
   };
 
-  const del = id => setTasks(ts => ts.filter(t => t.id !== id));
+  const del = id => {
+    setTasks(ts => ts.filter(t => t.id !== id));
+    delFromSupabase(id);
+  };
 
   const move = (id, status, targetId, pos) => {
     setTasks(ts => {
@@ -414,7 +548,7 @@ export default function App() {
       let insertIdx = targetId ? colTasks.findIndex(t => t.id === targetId) : colTasks.length;
       if(pos === "after" && insertIdx >= 0) insertIdx += 1;
       const baseOrder = insertIdx >= 0 ? insertIdx - 0.5 : colTasks.length;
-      const updated = ts.map(t => t.id===id ? {...t, status, order: baseOrder} : t);
+      const updated = ts.map(t => t.id===id ? {...t, status, order: baseOrder, updatedAt: Date.now()} : t);
       const newCol = updated.filter(t => t.status === status).sort((a,b) => (a.order??0)-(b.order??0));
       const orderMap = {};
       newCol.forEach((t, i) => { orderMap[t.id] = i; });
@@ -428,7 +562,6 @@ export default function App() {
       const fromIdx = colTasks.findIndex(t => t.id === dragId);
       let toIdx = targetId ? colTasks.findIndex(t => t.id === targetId) : colTasks.length - 1;
       if(fromIdx < 0 || toIdx < 0) return ts;
-      // posに応じてafter→次のインデックスに挿入
       if(pos === "after" && targetId) toIdx = toIdx + 1;
       if(fromIdx === toIdx || fromIdx === toIdx - 1 && pos === "after") return ts;
       const reordered = [...colTasks];
@@ -441,7 +574,9 @@ export default function App() {
     });
   };
 
-  const statusChange = (id, status) => setTasks(ts => ts.map(t => t.id===id ? {...t, status} : t));
+  const statusChange = (id, status) => {
+    setTasks(ts => ts.map(t => t.id===id ? {...t, status, updatedAt: Date.now()} : t));
+  };
 
   const toggleSort = key => {
     if(sortKey === key) setSortDir(d => d==="asc"?"desc":"asc");
@@ -456,9 +591,9 @@ export default function App() {
   });
 
   const navItems = [
-    { id:"kanban",    label:"ボード",     icon:"layout-kanban" },
-    { id:"list",      label:"リスト",     icon:"list"          },
-    { id:"dashboard", label:"ダッシュボード", icon:"chart-bar"  },
+    { id:"kanban",    label:"ボード",        icon:"layout-kanban" },
+    { id:"list",      label:"リスト",        icon:"list"          },
+    { id:"dashboard", label:"ダッシュボード", icon:"chart-bar"     },
   ];
 
   return (
@@ -489,7 +624,9 @@ export default function App() {
           <Icon name="calendar-event" size={15} />
           <span className="hidden sm:inline">Day Planner</span>
         </a>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-3">
+          {/* 同期ステータス表示 */}
+          <SyncIndicator syncing={syncing} syncError={syncError} />
           <button onClick={() => setModal({})}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-white"
             style={{background:"#7c6fcd"}}>
@@ -507,7 +644,7 @@ export default function App() {
               className="w-full rounded-lg pl-8 pr-3 py-1.5 text-[13px] outline-none"
               style={{background:"#25253a", border:"0.5px solid rgba(124,111,205,0.2)", color:"#e2e0ff"}} />
           </div>
-          {[["",  "すべて", "filterStatus"], ...STATUSES.map(s=>[s,STATUS_LABEL[s]||s,"filterStatus"])].filter((_,i)=>i===0||i<4).map(([v,l]) => (
+          {[["",  "すべて"], ...STATUSES.map(s=>[s,STATUS_LABEL[s]||s])].map(([v,l]) => (
             <button key={v+l} onClick={() => setFilterStatus(v)}
               className="rounded-lg px-3 py-1.5 text-[12px] transition-colors"
               style={{
