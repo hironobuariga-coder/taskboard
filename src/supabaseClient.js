@@ -1,23 +1,38 @@
-// src/supabaseClient.js
-// ─────────────────────────────────────────────────────────────
-// Supabase クライアント初期化
-// .env.local に以下を設定してください：
-//   VITE_SUPABASE_URL=https://xxxxxxxxxx.supabase.co
-//   VITE_SUPABASE_ANON_KEY=sb_publishable_xxxx...（Publishable key）
-// ─────────────────────────────────────────────────────────────
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const URL = import.meta.env.VITE_SUPABASE_URL || "";
+const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
-const isConfigured =
-  supabaseUrl && supabaseKey &&
-  supabaseUrl !== 'undefined' && supabaseKey !== 'undefined' &&
-  supabaseUrl.startsWith('https://');
+export const sbEnabled = Boolean(URL && KEY && !URL.includes("YOUR_PROJECT"));
+export const supabase  = sbEnabled ? createClient(URL, KEY) : null;
 
-// 未設定時はnullを返す（エラーは投げない → オフラインで動き続ける）
-export const supabase = isConfigured
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+export async function getSession() {
+  if (!supabase) return null;
+  const { data: { session } } = await supabase.auth.getSession();
+  return session;
+}
 
-export const sbEnabled = isConfigured;
+export async function signIn(email, password) {
+  if (!supabase) return { error: { message: "Supabase未設定" } };
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  return { data, error };
+}
+
+export async function signUp(email, password) {
+  if (!supabase) return { error: { message: "Supabase未設定" } };
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  return { data, error };
+}
+
+export async function signOut() {
+  if (!supabase) return;
+  await supabase.auth.signOut();
+}
+
+export function onAuthChange(cb) {
+  if (!supabase) return () => {};
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    cb(session?.user ?? null);
+  });
+  return () => subscription.unsubscribe();
+}
