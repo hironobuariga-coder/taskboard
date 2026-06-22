@@ -216,9 +216,206 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 .cat-guide-ex{color:var(--text2);line-height:1.4}
 .cat-select-wrap{position:relative;display:inline-block;width:100%}
 .backup-btn{font-size:12px;padding:4px 10px}
+
+/* ===== ログイン画面 ===== */
+#login-screen{
+  display:none;position:fixed;inset:0;background:#13131f;
+  align-items:center;justify-content:center;z-index:2000;
+  font-family:'Noto Sans JP','Inter',sans-serif;
+}
+#login-screen.show{display:flex;}
+.login-card{
+  width:100%;max-width:380px;background:#1c1c2e;
+  border:0.5px solid rgba(124,111,205,0.25);border-radius:16px;padding:36px 28px;
+}
+.login-title{font-size:22px;font-weight:600;color:#e8e6ff;margin-bottom:4px;}
+.login-sub{font-size:13px;color:#9d9bbf;margin-bottom:28px;}
+.login-label{font-size:12px;color:#9d9bbf;margin-bottom:6px;display:block;}
+.login-input{
+  width:100%;padding:10px 12px;border-radius:8px;
+  border:0.5px solid rgba(124,111,205,0.3);background:#13131f;
+  color:#e8e6ff;font-size:14px;margin-bottom:14px;outline:none;box-sizing:border-box;
+}
+.login-btn{
+  width:100%;padding:11px;border-radius:8px;background:#7c6fcd;
+  color:#fff;border:none;font-size:15px;font-weight:500;cursor:pointer;
+  margin-bottom:12px;opacity:1;transition:opacity 0.15s;
+}
+.login-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.login-err{font-size:13px;color:#f09595;margin-bottom:12px;min-height:18px;
+  padding:8px 12px;background:rgba(226,75,74,0.1);border-radius:8px;display:none;}
+.login-err.show{display:block;}
+.login-msg{font-size:13px;color:#5DCAA5;margin-bottom:12px;
+  padding:8px 12px;background:rgba(29,158,117,0.1);border-radius:8px;display:none;}
+.login-msg.show{display:block;}
+.login-toggle{font-size:13px;color:#9d9bbf;text-align:center;}
+.login-toggle a{color:#c4bef5;cursor:pointer;}
+
+/* ===== 付箋パネル ===== */
+#sticky-tab{
+  position:fixed;right:0;top:50%;transform:translateY(-50%);
+  width:28px;background:#1c1c2e;
+  border-left:0.5px solid rgba(124,111,205,0.25);
+  border-top:0.5px solid rgba(124,111,205,0.25);
+  border-bottom:0.5px solid rgba(124,111,205,0.25);
+  border-radius:8px 0 0 8px;padding:16px 0;
+  cursor:pointer;z-index:800;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  transition:right 0.25s ease;
+}
+#sticky-tab.open{right:292px;}
+#sticky-tab .s-icon{font-size:16px;color:#c4bef5;}
+#sticky-tab .s-label{writing-mode:vertical-rl;font-size:10px;color:#9d9bbf;letter-spacing:0.05em;user-select:none;}
+#sticky-tab .s-badge{
+  width:16px;height:16px;border-radius:50%;background:#7c6fcd;
+  color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:600;
+}
+#sticky-tab .s-badge.alarm{background:#E24B4A;}
+#sticky-panel{
+  position:fixed;right:-292px;top:0;width:292px;height:100vh;
+  background:#1c1c2e;border-left:0.5px solid rgba(124,111,205,0.25);
+  z-index:799;transition:right 0.25s ease;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+#sticky-panel.open{right:0;}
+.sp-header{
+  padding:12px 14px 10px;border-bottom:0.5px solid rgba(124,111,205,0.15);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.sp-title{font-size:14px;font-weight:500;color:#e8e6ff;display:flex;align-items:center;gap:6px;}
+.sp-close{background:none;border:none;color:#9d9bbf;cursor:pointer;font-size:16px;}
+.sp-filters{
+  display:flex;gap:4px;padding:8px 10px;overflow-x:auto;
+  border-bottom:0.5px solid rgba(124,111,205,0.1);flex-shrink:0;
+}
+.sp-filters::-webkit-scrollbar{display:none;}
+.sp-pill{
+  padding:3px 10px;border-radius:12px;border:0.5px solid rgba(124,111,205,0.3);
+  background:none;color:#9d9bbf;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;
+}
+.sp-pill.active{background:rgba(124,111,205,0.25);color:#c4bef5;}
+.sp-input-area{padding:10px 12px;border-bottom:0.5px solid rgba(124,111,205,0.1);flex-shrink:0;}
+.sp-colors{display:flex;gap:8px;margin-bottom:8px;}
+.sp-cdot{
+  width:22px;height:22px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;transition:all 0.1s;
+}
+.sp-cdot.sel{border-color:#e8e6ff;transform:scale(1.2);}
+.sp-textarea{
+  width:100%;padding:8px 10px;border-radius:8px;
+  border:0.5px solid rgba(124,111,205,0.3);background:#13131f;
+  color:#e8e6ff;font-size:13px;resize:vertical;outline:none;
+  margin-bottom:8px;line-height:1.6;box-sizing:border-box;min-height:72px;
+  font-family:inherit;
+}
+.sp-timer-row{display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;}
+.sp-switch{
+  width:34px;height:18px;border-radius:9px;background:rgba(255,255,255,0.15);
+  position:relative;transition:background 0.2s;flex-shrink:0;
+}
+.sp-switch.on{background:#7c6fcd;}
+.sp-switch::after{
+  content:'';position:absolute;top:2px;left:2px;
+  width:14px;height:14px;border-radius:50%;background:white;transition:left 0.2s;
+}
+.sp-switch.on::after{left:18px;}
+.sp-timer-label{font-size:12px;color:#9d9bbf;}
+.sp-dt-input{
+  width:100%;padding:7px 10px;border-radius:8px;margin-top:8px;
+  border:0.5px solid rgba(124,111,205,0.3);background:#13131f;
+  color:#e8e6ff;font-size:13px;outline:none;box-sizing:border-box;display:none;
+}
+.sp-dt-input.show{display:block;}
+.sp-save{
+  width:100%;padding:8px;border-radius:8px;background:#7c6fcd;
+  color:#fff;border:none;font-size:13px;font-weight:500;cursor:pointer;
+  margin-top:8px;opacity:1;transition:opacity 0.15s;
+}
+.sp-save:disabled{opacity:0.5;cursor:not-allowed;}
+.sp-list{flex:1;overflow-y:auto;padding:10px 10px 20px;}
+.sp-empty{text-align:center;padding:40px 16px;color:#6b6b7e;font-size:13px;line-height:1.8;}
+.sp-card{
+  border-radius:8px;padding:10px 11px;margin-bottom:8px;
+  font-size:13px;line-height:1.6;position:relative;word-break:break-word;
+  border:0.5px solid transparent;
+}
+.sp-card.yellow{background:#FAEEDA;color:#633806;border-color:#EF9F27;}
+.sp-card.green {background:#EAF3DE;color:#27500A;border-color:#97C459;}
+.sp-card.blue  {background:#E6F1FB;color:#0C447C;border-color:#85B7EB;}
+.sp-card.pink  {background:#FBEAF0;color:#72243E;border-color:#ED93B1;}
+@keyframes stickyBlink{0%,100%{opacity:1}50%{opacity:0.2}}
+.sp-card.ringing{animation:stickyBlink 0.6s ease-in-out infinite;}
+.sp-card-text{white-space:pre-wrap;margin-bottom:4px;}
+.sp-card-dt{font-size:11px;opacity:0.65;}
+.sp-card-dt span{padding:1px 6px;border-radius:4px;background:rgba(0,0,0,0.08);}
+.sp-del{
+  position:absolute;top:6px;right:6px;width:20px;height:20px;
+  background:rgba(0,0,0,0.1);border:none;border-radius:4px;
+  color:inherit;font-size:12px;cursor:pointer;display:none;
+  align-items:center;justify-content:center;opacity:0.7;
+}
+.sp-card:hover .sp-del{display:flex;}
 </style>
 </head>
 <body>
+
+<!-- ログイン画面 -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-title">Day <span style="color:#c4bef5">Planner</span></div>
+    <div class="login-sub" id="login-sub-text">ログインしてください</div>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-msg" id="login-msg"></div>
+    <label class="login-label">メールアドレス</label>
+    <input class="login-input" type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+    <label class="login-label">パスワード</label>
+    <input class="login-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    <button class="login-btn" id="login-btn" onclick="handleLogin()">ログイン</button>
+    <div class="login-toggle">
+      <span id="login-toggle-text">アカウントをお持ちでない方は</span>
+      <a onclick="toggleLoginMode()">新規登録</a>
+    </div>
+  </div>
+</div>
+
+<!-- 付箋タブ -->
+<div id="sticky-tab" onclick="toggleStickyPanel()">
+  <i class="ti ti-note s-icon"></i>
+  <span class="s-label">付箋</span>
+  <span class="s-badge" id="sticky-badge" style="display:none">0</span>
+</div>
+
+<!-- 付箋パネル -->
+<div id="sticky-panel">
+  <div class="sp-header">
+    <span class="sp-title"><i class="ti ti-note" style="font-size:15px;color:#c4bef5"></i> 付箋メモ</span>
+    <button class="sp-close" onclick="toggleStickyPanel()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="sp-filters">
+    <button class="sp-pill active" data-filter="all"   onclick="setStickyFilter('all',this)">すべて</button>
+    <button class="sp-pill"        data-filter="yellow" onclick="setStickyFilter('yellow',this)">黄</button>
+    <button class="sp-pill"        data-filter="green"  onclick="setStickyFilter('green',this)">緑</button>
+    <button class="sp-pill"        data-filter="blue"   onclick="setStickyFilter('blue',this)">青</button>
+    <button class="sp-pill"        data-filter="pink"   onclick="setStickyFilter('pink',this)">ピンク</button>
+    <button class="sp-pill"        data-filter="timer"  onclick="setStickyFilter('timer',this)">⏰</button>
+  </div>
+  <div class="sp-input-area">
+    <div class="sp-colors">
+      <div class="sp-cdot sel" style="background:#EF9F27" data-color="yellow" onclick="selectStickyColor('yellow',this)"></div>
+      <div class="sp-cdot"     style="background:#97C459" data-color="green"  onclick="selectStickyColor('green',this)"></div>
+      <div class="sp-cdot"     style="background:#85B7EB" data-color="blue"   onclick="selectStickyColor('blue',this)"></div>
+      <div class="sp-cdot"     style="background:#ED93B1" data-color="pink"   onclick="selectStickyColor('pink',this)"></div>
+    </div>
+    <textarea class="sp-textarea" id="sticky-text" placeholder="メモを入力…"></textarea>
+    <div class="sp-timer-row" onclick="toggleStickyTimer()">
+      <div class="sp-switch" id="sticky-switch"></div>
+      <span class="sp-timer-label">タイマーをセット</span>
+    </div>
+    <input type="datetime-local" class="sp-dt-input" id="sticky-dt">
+    <button class="sp-save" id="sticky-save-btn" onclick="saveSticky()">保存</button>
+  </div>
+  <div class="sp-list" id="sticky-list"></div>
+</div>
 
 <!-- NAV -->
 <nav class="nav">
@@ -229,12 +426,14 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
   <button class="nav-link" onclick="showPage('log')"><i class="ti ti-notebook"></i> 実績ログ</button>
   <div class="nav-right" style="gap:8px">
     <span class="nav-ext" id="nav-sync-badge" style="display:none"><i class="ti ti-calendar-check" style="font-size:14px"></i> <span id="nav-sync-text"></span></span>
+    <span id="nav-user-email" style="font-size:11px;color:#6b6b8e;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none"></span>
     <button class="backup-btn" onclick="openSettings()" style="font-size:11px" title="設定"><i class="ti ti-settings" style="font-size:13px"></i> 設定</button>
     <button class="backup-btn" onclick="exportBackup()" style="font-size:11px" title="データをバックアップ"><i class="ti ti-database-export" style="font-size:13px"></i> バックアップ</button>
     <label style="cursor:pointer;margin:0" title="バックアップから復元">
       <input type="file" id="restore-file" accept=".json" onchange="importBackup(this)" style="display:none">
       <span class="backup-btn" onclick="document.getElementById('restore-file').click()" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;border-radius:var(--r-md);border:0.5px solid var(--border2);cursor:pointer;background:var(--bg);color:var(--text)"><i class="ti ti-database-import" style="font-size:13px"></i> 復元</span>
     </label>
+    <button class="backup-btn" id="logout-btn" onclick="handlePlannerSignOut()" style="font-size:11px;display:none" title="ログアウト"><i class="ti ti-logout" style="font-size:13px"></i> ログアウト</button>
   </div>
 </nav>
 
@@ -1322,6 +1521,254 @@ renderTodayWH();
 renderVsPanel();
 updateClock();
 setInterval(()=>{if(tState==='idle'||tState==='done')updateClock();},1000);
+</script>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ════════════════════════════════════════════
+// ⚙️ Supabase設定 — .env.localと同じ値を入れてください
+// ════════════════════════════════════════════
+const SB_URL = (typeof import_meta_env !== 'undefined' && import_meta_env.VITE_SUPABASE_URL) || ''https://ftfngatmiimvucncnxef.supabase.co';
+const SB_KEY = (typeof import_meta_env !== 'undefined' && import_meta_env.VITE_SUPABASE_ANON_KEY) || 'sb_publishable_4Y7CpNdNwvVWmLtrINTaZg_JUO9srUU';
+// ════════════════════════════════════════════
+
+let sb = null;
+try {
+  if (SB_URL && !SB_URL.includes('YOUR_')) {
+    sb = supabase.createClient(SB_URL, SB_KEY);
+  }
+} catch(e) {}
+
+// ── 認証状態 ──
+let plannerUser = null;
+let loginMode = 'login';
+
+async function initPlannerAuth() {
+  if (!sb) return; // Supabase未設定なら認証スキップ
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    onPlannerLogin(session.user);
+  } else {
+    document.getElementById('login-screen').classList.add('show');
+  }
+  sb.auth.onAuthStateChange((_e, session) => {
+    if (session?.user) onPlannerLogin(session.user);
+    else { plannerUser = null; document.getElementById('login-screen').classList.add('show'); }
+  });
+}
+
+function onPlannerLogin(user) {
+  plannerUser = user;
+  document.getElementById('login-screen').classList.remove('show');
+  const emailEl = document.getElementById('nav-user-email');
+  if (emailEl) { emailEl.textContent = user.email; emailEl.style.display = ''; }
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.style.display = '';
+  initStickyPanel();
+}
+
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-err');
+  const msgEl = document.getElementById('login-msg');
+  const btn   = document.getElementById('login-btn');
+  errEl.classList.remove('show'); msgEl.classList.remove('show');
+  if (!email || !pass) { errEl.textContent = 'メールとパスワードを入力してください'; errEl.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = '処理中...';
+  const fn = loginMode === 'login'
+    ? sb.auth.signInWithPassword({ email, password: pass })
+    : sb.auth.signUp({ email, password: pass });
+  const { data, error } = await fn;
+  btn.disabled = false; btn.textContent = loginMode === 'login' ? 'ログイン' : '新規登録';
+  if (error) { errEl.textContent = error.message; errEl.classList.add('show'); return; }
+  if (loginMode === 'signup' && !data?.session) {
+    msgEl.textContent = '確認メールを送りました。メール内のリンクをクリックしてからログインしてください。';
+    msgEl.classList.add('show'); loginMode = 'login';
+    btn.textContent = 'ログイン';
+    document.getElementById('login-sub-text').textContent = 'ログインしてください';
+    document.getElementById('login-toggle-text').textContent = 'アカウントをお持ちでない方は';
+    return;
+  }
+  if (data?.session?.user) onPlannerLogin(data.session.user);
+}
+
+function toggleLoginMode() {
+  loginMode = loginMode === 'login' ? 'signup' : 'login';
+  document.getElementById('login-btn').textContent = loginMode === 'login' ? 'ログイン' : '新規登録';
+  document.getElementById('login-sub-text').textContent = loginMode === 'login' ? 'ログインしてください' : '新規アカウントを作成';
+  document.getElementById('login-toggle-text').textContent = loginMode === 'login' ? 'アカウントをお持ちでない方は' : 'すでにアカウントをお持ちの方は';
+  document.getElementById('login-err').classList.remove('show');
+  document.getElementById('login-msg').classList.remove('show');
+}
+
+async function handlePlannerSignOut() {
+  if (sb) await sb.auth.signOut();
+  plannerUser = null;
+  document.getElementById('nav-user-email').style.display = 'none';
+  document.getElementById('logout-btn').style.display = 'none';
+  document.getElementById('login-screen').classList.add('show');
+  stickyNotes = [];
+  renderStickyList();
+  document.getElementById('sticky-panel').classList.remove('open');
+  document.getElementById('sticky-tab').classList.remove('open');
+}
+
+// ── 付箋パネル ──
+let stickyNotes = [];
+let stickyColor = 'yellow';
+let stickyTimerOn = false;
+let stickyFilter = 'all';
+
+const STICKY_COLORS = {
+  yellow: { bg:'#FAEEDA', text:'#633806', border:'#EF9F27' },
+  green:  { bg:'#EAF3DE', text:'#27500A', border:'#97C459' },
+  blue:   { bg:'#E6F1FB', text:'#0C447C', border:'#85B7EB' },
+  pink:   { bg:'#FBEAF0', text:'#72243E', border:'#ED93B1' },
+};
+
+function initStickyPanel() {
+  if (!sb || !plannerUser) return;
+  // データ読み込み
+  sb.from('sticky_notes').select('*')
+    .eq('user_id', plannerUser.id)
+    .order('created_at', { ascending: false })
+    .then(({ data }) => { if (data) { stickyNotes = data; renderStickyList(); updateStickyBadge(); } });
+
+  // リアルタイム同期
+  sb.channel('sticky-planner-' + plannerUser.id)
+    .on('postgres_changes', { event:'*', schema:'public', table:'sticky_notes', filter:`user_id=eq.${plannerUser.id}` },
+      payload => {
+        if (payload.eventType === 'INSERT') stickyNotes.unshift(payload.new);
+        else if (payload.eventType === 'DELETE') stickyNotes = stickyNotes.filter(n => n.id !== payload.old.id);
+        else if (payload.eventType === 'UPDATE') stickyNotes = stickyNotes.map(n => n.id === payload.new.id ? payload.new : n);
+        renderStickyList(); updateStickyBadge();
+      })
+    .subscribe();
+
+  // タイマーチェック
+  setInterval(() => {
+    const now = new Date();
+    stickyNotes.forEach(n => {
+      if (n.alarm_at && !n.alarmed && new Date(n.alarm_at) <= now) triggerStickyAlarm(n);
+    });
+  }, 15000);
+
+  // デフォルト日時
+  const dt = new Date(Date.now() + 3600000); dt.setSeconds(0,0);
+  document.getElementById('sticky-dt').value =
+    new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString().slice(0,16);
+}
+
+function toggleStickyPanel() {
+  const panel = document.getElementById('sticky-panel');
+  const tab   = document.getElementById('sticky-tab');
+  const open  = panel.classList.toggle('open');
+  tab.classList.toggle('open', open);
+}
+
+function setStickyFilter(f, el) {
+  stickyFilter = f;
+  document.querySelectorAll('.sp-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderStickyList();
+}
+
+function selectStickyColor(c, el) {
+  stickyColor = c;
+  document.querySelectorAll('.sp-cdot').forEach(d => d.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function toggleStickyTimer() {
+  stickyTimerOn = !stickyTimerOn;
+  document.getElementById('sticky-switch').classList.toggle('on', stickyTimerOn);
+  document.getElementById('sticky-dt').classList.toggle('show', stickyTimerOn);
+}
+
+async function saveSticky() {
+  const text = document.getElementById('sticky-text').value.trim();
+  if (!text) return;
+  const btn = document.getElementById('sticky-save-btn');
+  btn.disabled = true; btn.textContent = '保存中…';
+  const dtVal = stickyTimerOn ? document.getElementById('sticky-dt').value : null;
+  const row = {
+    user_id:  plannerUser.id,
+    text, color: stickyColor,
+    alarm_at: dtVal ? new Date(dtVal).toISOString() : null,
+    alarmed: false,
+  };
+  if (sb) {
+    const { data } = await sb.from('sticky_notes').insert(row).select().single();
+    if (data) { stickyNotes.unshift(data); renderStickyList(); updateStickyBadge(); }
+  }
+  document.getElementById('sticky-text').value = '';
+  btn.disabled = false; btn.textContent = '保存';
+  toast('付箋を保存しました');
+}
+
+async function deleteSticky(id) {
+  if (sb) await sb.from('sticky_notes').delete().eq('id', id);
+  stickyNotes = stickyNotes.filter(n => n.id !== id);
+  renderStickyList(); updateStickyBadge();
+}
+
+function triggerStickyAlarm(note) {
+  document.getElementById('sticky-panel').classList.add('open');
+  document.getElementById('sticky-tab').classList.add('open');
+  try { navigator.vibrate && navigator.vibrate([200,100,200]); } catch {}
+  toast('⏰ タイマー：' + (note.text.length > 30 ? note.text.slice(0,30)+'…' : note.text));
+  if (sb && plannerUser) {
+    sb.from('sticky_notes').update({ alarmed: true }).eq('id', note.id);
+    stickyNotes = stickyNotes.map(n => n.id === note.id ? {...n, alarmed:true} : n);
+    renderStickyList();
+  }
+}
+
+function updateStickyBadge() {
+  const badge = document.getElementById('sticky-badge');
+  const alarmCount = stickyNotes.filter(n => n.alarm_at && !n.alarmed && new Date(n.alarm_at) <= new Date()).length;
+  if (stickyNotes.length === 0) { badge.style.display = 'none'; return; }
+  badge.style.display = 'flex';
+  badge.textContent = alarmCount > 0 ? '!' : stickyNotes.length;
+  badge.classList.toggle('alarm', alarmCount > 0);
+}
+
+function renderStickyList() {
+  const list = document.getElementById('sticky-list');
+  const now = new Date();
+  const filtered = stickyFilter === 'all' ? stickyNotes
+    : stickyFilter === 'timer' ? stickyNotes.filter(n => n.alarm_at)
+    : stickyNotes.filter(n => n.color === stickyFilter);
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="sp-empty">付箋がありません<br>上から追加できます</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(n => {
+    const c = STICKY_COLORS[n.color] || STICKY_COLORS.yellow;
+    const alarmAt = n.alarm_at ? new Date(n.alarm_at) : null;
+    const isRinging = alarmAt && !n.alarmed && alarmAt <= now;
+    const dtLabel = alarmAt
+      ? '⏰ ' + alarmAt.toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) + ' ' +
+        alarmAt.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) +
+        (alarmAt < now ? ' (経過)' : '')
+      : '';
+    return `<div class="sp-card ${n.color}${isRinging?' ringing':''}" style="background:${c.bg};color:${c.text};border-color:${c.border}">
+      <div class="sp-card-text">${n.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      ${dtLabel ? `<div class="sp-card-dt"><span>${dtLabel}</span></div>` : ''}
+      <button class="sp-del" onclick="deleteSticky('${n.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// キー入力でログイン実行
+document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
+document.getElementById('login-email').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
+
+// 起動
+initPlannerAuth();
 </script>
 </body>
 </html>

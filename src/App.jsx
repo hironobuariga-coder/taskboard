@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { supabase, sbEnabled } from "./supabaseClient";
+import { supabase, sbEnabled, getSession, signIn, signUp, signOut, onAuthChange } from "./supabaseClient";
 
 // ===== DESIGN TOKENS (案C: ダーク + パープルアクセント) =====
 // bg:      #13131f / #1c1c2e / #25253a
@@ -84,6 +84,285 @@ const mergeByUpdatedAt = (local, remote) => {
 const Icon = ({ name, size = 16, className = "" }) => (
   <i className={`ti ti-${name} ${className}`} style={{ fontSize: size }} aria-hidden="true" />
 );
+
+// ===== LOGIN SCREEN =====
+function LoginScreen({ onLogin }) {
+  const [email, setEmail]     = useState("");
+  const [pass,  setPass]      = useState("");
+  const [mode,  setMode]      = useState("login"); // "login" | "signup"
+  const [err,   setErr]       = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg,   setMsg]       = useState("");
+
+  const handle = async () => {
+    setErr(""); setMsg("");
+    if (!email || !pass) { setErr("メールとパスワードを入力してください"); return; }
+    setLoading(true);
+    const fn = mode === "login" ? signIn : signUp;
+    const { data, error } = await fn(email, pass);
+    setLoading(false);
+    if (error) { setErr(error.message); return; }
+    if (mode === "signup" && !data?.session) {
+      setMsg("確認メールを送りました。メール内のリンクをクリックしてからログインしてください。");
+      setMode("login"); return;
+    }
+    if (data?.session?.user) onLogin(data.session.user);
+  };
+
+  return (
+    <div style={{minHeight:"100vh", background:"#13131f", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Noto Sans JP','Inter',sans-serif"}}>
+      <div style={{width:"100%", maxWidth:380, background:"#1c1c2e", border:"0.5px solid rgba(124,111,205,0.25)", borderRadius:16, padding:"36px 28px"}}>
+        <div style={{fontSize:22, fontWeight:600, color:"#e8e6ff", marginBottom:4}}>
+          Task<span style={{color:"#c4bef5"}}>Board</span>
+        </div>
+        <div style={{fontSize:13, color:"#9d9bbf", marginBottom:28}}>
+          {mode === "login" ? "ログインしてください" : "新規アカウントを作成"}
+        </div>
+        {err && <div style={{fontSize:13, color:"#f09595", marginBottom:12, padding:"8px 12px", background:"rgba(226,75,74,0.1)", borderRadius:8}}>{err}</div>}
+        {msg && <div style={{fontSize:13, color:"#5DCAA5", marginBottom:12, padding:"8px 12px", background:"rgba(29,158,117,0.1)", borderRadius:8}}>{msg}</div>}
+        <div style={{fontSize:12, color:"#9d9bbf", marginBottom:6}}>メールアドレス</div>
+        <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&handle()}
+          placeholder="you@example.com" autoComplete="email"
+          style={{width:"100%", padding:"10px 12px", borderRadius:8, border:"0.5px solid rgba(124,111,205,0.3)", background:"#13131f", color:"#e8e6ff", fontSize:14, marginBottom:12, outline:"none"}} />
+        <div style={{fontSize:12, color:"#9d9bbf", marginBottom:6}}>パスワード</div>
+        <input type="password" value={pass} onChange={e=>setPass(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&handle()}
+          placeholder="••••••••" autoComplete={mode==="login"?"current-password":"new-password"}
+          style={{width:"100%", padding:"10px 12px", borderRadius:8, border:"0.5px solid rgba(124,111,205,0.3)", background:"#13131f", color:"#e8e6ff", fontSize:14, marginBottom:20, outline:"none"}} />
+        <button onClick={handle} disabled={loading}
+          style={{width:"100%", padding:"11px", borderRadius:8, background:"#7c6fcd", color:"#fff", border:"none", fontSize:15, fontWeight:500, cursor:loading?"not-allowed":"pointer", opacity:loading?0.6:1, marginBottom:12}}>
+          {loading ? "処理中..." : mode === "login" ? "ログイン" : "新規登録"}
+        </button>
+        <div style={{textAlign:"center", fontSize:13, color:"#9d9bbf"}}>
+          {mode === "login" ? "アカウントをお持ちでない方は" : "すでにアカウントをお持ちの方は"}
+          <span onClick={()=>{setMode(mode==="login"?"signup":"login");setErr("");setMsg("");}}
+            style={{color:"#c4bef5", cursor:"pointer", marginLeft:4}}>
+            {mode === "login" ? "新規登録" : "ログイン"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== STICKY NOTE PANEL =====
+function StickyPanel({ user }) {
+  const [open,    setOpen]    = useState(false);
+  const [notes,   setNotes]   = useState([]);
+  const [text,    setText]    = useState("");
+  const [color,   setColor]   = useState("yellow");
+  const [timerOn, setTimerOn] = useState(false);
+  const [alarmDt, setAlarmDt] = useState("");
+  const [filter,  setFilter]  = useState("all");
+  const [saving,  setSaving]  = useState(false);
+  const alarmRefs = useRef([]);
+
+  const COLORS = {
+    yellow: { bg:"#FAEEDA", text:"#633806", border:"#EF9F27" },
+    green:  { bg:"#EAF3DE", text:"#27500A", border:"#97C459" },
+    blue:   { bg:"#E6F1FB", text:"#0C447C", border:"#85B7EB" },
+    pink:   { bg:"#FBEAF0", text:"#72243E", border:"#ED93B1" },
+  };
+
+  // 初回ロード
+  useEffect(() => {
+    if (!supabase || !user) return;
+    supabase.from("sticky_notes").select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => { if (data) setNotes(data); });
+
+    // リアルタイム同期
+    const ch = supabase.channel("sticky-"+user.id)
+      .on("postgres_changes", { event:"*", schema:"public", table:"sticky_notes", filter:`user_id=eq.${user.id}` },
+        payload => {
+          if (payload.eventType === "INSERT") setNotes(p => [payload.new, ...p]);
+          else if (payload.eventType === "DELETE") setNotes(p => p.filter(n => n.id !== payload.old.id));
+          else if (payload.eventType === "UPDATE") setNotes(p => p.map(n => n.id===payload.new.id ? payload.new : n));
+        })
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [user]);
+
+  // アラームチェック（15秒ごと）
+  useEffect(() => {
+    const t = setInterval(() => {
+      const now = new Date();
+      notes.forEach(n => {
+        if (n.alarm_at && !n.alarmed && new Date(n.alarm_at) <= now) {
+          triggerAlarm(n);
+        }
+      });
+    }, 15000);
+    return () => clearInterval(t);
+  }, [notes]);
+
+  const triggerAlarm = async (note) => {
+    setOpen(true);
+    try { navigator.vibrate && navigator.vibrate([200,100,200]); } catch {}
+    if (supabase && user) {
+      await supabase.from("sticky_notes").update({ alarmed: true }).eq("id", note.id);
+      setNotes(p => p.map(n => n.id===note.id ? {...n, alarmed:true} : n));
+    }
+  };
+
+  const save = async () => {
+    if (!text.trim()) return;
+    setSaving(true);
+    const row = {
+      user_id:  user.id,
+      text:     text.trim(),
+      color,
+      alarm_at: timerOn && alarmDt ? new Date(alarmDt).toISOString() : null,
+      alarmed:  false,
+    };
+    if (supabase) {
+      const { data } = await supabase.from("sticky_notes").insert(row).select().single();
+      if (data) setNotes(p => [data, ...p]);
+    } else {
+      setNotes(p => [{...row, id: Date.now().toString(), created_at: new Date().toISOString()}, ...p]);
+    }
+    setText(""); setTimerOn(false); setSaving(false);
+  };
+
+  const del = async (id) => {
+    if (supabase) await supabase.from("sticky_notes").delete().eq("id", id);
+    setNotes(p => p.filter(n => n.id !== id));
+  };
+
+  const filtered = filter === "all" ? notes
+    : filter === "timer" ? notes.filter(n => n.alarm_at)
+    : notes.filter(n => n.color === filter);
+
+  const alarmCount = notes.filter(n => n.alarm_at && !n.alarmed && new Date(n.alarm_at) <= new Date()).length;
+
+  // デフォルト日時（1時間後）
+  useEffect(() => {
+    const dt = new Date(Date.now() + 3600000);
+    dt.setSeconds(0,0);
+    setAlarmDt(new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString().slice(0,16));
+  }, []);
+
+  return (
+    <>
+      {/* 右端タブ */}
+      <div onClick={() => setOpen(o => !o)} style={{
+        position:"fixed", right: open ? 292 : 0, top:"50%", transform:"translateY(-50%)",
+        width:28, background:"#1c1c2e", borderLeft:"0.5px solid rgba(124,111,205,0.25)",
+        borderTop:"0.5px solid rgba(124,111,205,0.25)", borderBottom:"0.5px solid rgba(124,111,205,0.25)",
+        borderRadius:"8px 0 0 8px", padding:"16px 0", cursor:"pointer", zIndex:1000,
+        display:"flex", flexDirection:"column", alignItems:"center", gap:8,
+        transition:"right 0.25s ease",
+      }}>
+        <i className="ti ti-note" style={{fontSize:16, color:"#c4bef5"}} />
+        <span style={{writingMode:"vertical-rl", fontSize:10, color:"#9d9bbf", letterSpacing:"0.05em", userSelect:"none"}}>付箋</span>
+        {(notes.length > 0 || alarmCount > 0) && (
+          <span style={{
+            width:16, height:16, borderRadius:"50%", background: alarmCount>0 ? "#E24B4A" : "#7c6fcd",
+            color:"#fff", fontSize:9, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:600,
+          }}>{alarmCount > 0 ? "!" : notes.length}</span>
+        )}
+      </div>
+
+      {/* パネル本体 */}
+      <div style={{
+        position:"fixed", right: open ? 0 : -292, top:0, width:292, height:"100vh",
+        background:"#1c1c2e", borderLeft:"0.5px solid rgba(124,111,205,0.25)",
+        zIndex:999, transition:"right 0.25s ease",
+        display:"flex", flexDirection:"column", overflow:"hidden",
+      }}>
+        {/* ヘッダー */}
+        <div style={{padding:"12px 14px 10px", borderBottom:"0.5px solid rgba(124,111,205,0.15)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0}}>
+          <span style={{fontSize:14, fontWeight:500, color:"#e8e6ff", display:"flex", alignItems:"center", gap:6}}>
+            <i className="ti ti-note" style={{fontSize:15, color:"#c4bef5"}} /> 付箋メモ
+          </span>
+          <button onClick={() => setOpen(false)} style={{background:"none", border:"none", color:"#9d9bbf", cursor:"pointer", fontSize:16}}>
+            <i className="ti ti-x" />
+          </button>
+        </div>
+
+        {/* フィルター */}
+        <div style={{display:"flex", gap:4, padding:"8px 10px", borderBottom:"0.5px solid rgba(124,111,205,0.1)", overflowX:"auto", flexShrink:0}}>
+          {[["all","すべて"],["yellow","黄"],["green","緑"],["blue","青"],["pink","ピンク"],["timer","⏰"]].map(([f,label]) => (
+            <button key={f} onClick={() => setFilter(f)}
+              style={{padding:"3px 10px", borderRadius:12, border:"0.5px solid rgba(124,111,205,0.3)", background: filter===f ? "rgba(124,111,205,0.25)" : "none", color: filter===f ? "#c4bef5" : "#9d9bbf", fontSize:11, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0}}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* 入力エリア */}
+        <div style={{padding:"10px 12px", borderBottom:"0.5px solid rgba(124,111,205,0.1)", flexShrink:0}}>
+          <div style={{display:"flex", gap:8, marginBottom:8}}>
+            {Object.entries(COLORS).map(([k,v]) => (
+              <div key={k} onClick={() => setColor(k)} style={{
+                width:22, height:22, borderRadius:"50%", background:v.border,
+                border: color===k ? "2px solid #e8e6ff" : "2px solid transparent",
+                cursor:"pointer", transform: color===k ? "scale(1.2)" : "scale(1)", transition:"all 0.1s",
+              }} />
+            ))}
+          </div>
+          <textarea value={text} onChange={e=>setText(e.target.value)}
+            placeholder="メモを入力…" rows={3}
+            style={{width:"100%", padding:"8px 10px", borderRadius:8, border:"0.5px solid rgba(124,111,205,0.3)", background:"#13131f", color:"#e8e6ff", fontSize:13, fontFamily:"inherit", resize:"vertical", outline:"none", marginBottom:8, lineHeight:1.6}} />
+          {/* タイマートグル */}
+          <div style={{display:"flex", alignItems:"center", gap:8, marginBottom: timerOn ? 8 : 0, cursor:"pointer"}} onClick={() => setTimerOn(o=>!o)}>
+            <div style={{width:34, height:18, borderRadius:9, background: timerOn ? "#7c6fcd" : "rgba(255,255,255,0.15)", position:"relative", transition:"background 0.2s", flexShrink:0}}>
+              <div style={{position:"absolute", top:2, left: timerOn ? 16 : 2, width:14, height:14, borderRadius:"50%", background:"white", transition:"left 0.2s"}} />
+            </div>
+            <span style={{fontSize:12, color:"#9d9bbf"}}>タイマーをセット</span>
+          </div>
+          {timerOn && (
+            <input type="datetime-local" value={alarmDt} onChange={e=>setAlarmDt(e.target.value)}
+              style={{width:"100%", padding:"7px 10px", borderRadius:8, border:"0.5px solid rgba(124,111,205,0.3)", background:"#13131f", color:"#e8e6ff", fontSize:13, outline:"none", marginBottom:8}} />
+          )}
+          <button onClick={save} disabled={saving || !text.trim()}
+            style={{width:"100%", padding:"8px", borderRadius:8, background:"#7c6fcd", color:"#fff", border:"none", fontSize:13, fontWeight:500, cursor:saving||!text.trim()?"not-allowed":"pointer", opacity:saving||!text.trim()?0.5:1}}>
+            {saving ? "保存中…" : "保存"}
+          </button>
+        </div>
+
+        {/* 付箋リスト */}
+        <div style={{flex:1, overflowY:"auto", padding:"10px 10px 20px"}}>
+          {filtered.length === 0 && (
+            <div style={{textAlign:"center", padding:"40px 16px", color:"#6b6b7e", fontSize:13, lineHeight:1.8}}>
+              付箋がありません<br />上から追加できます
+            </div>
+          )}
+          {filtered.map(n => {
+            const c = COLORS[n.color] || COLORS.yellow;
+            const alarmAt = n.alarm_at ? new Date(n.alarm_at) : null;
+            const isRinging = alarmAt && !n.alarmed && alarmAt <= new Date();
+            const dtLabel = alarmAt ? `⏰ ${alarmAt.toLocaleDateString("ja-JP",{month:"numeric",day:"numeric"})} ${alarmAt.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}` : "";
+            return (
+              <div key={n.id} style={{
+                background:c.bg, color:c.text, border:`0.5px solid ${c.border}`,
+                borderRadius:8, padding:"10px 11px", marginBottom:8,
+                fontSize:13, lineHeight:1.6, position:"relative", wordBreak:"break-word",
+                animation: isRinging ? "stickyBlink 0.6s ease-in-out infinite" : "none",
+              }}>
+                <div style={{whiteSpace:"pre-wrap", marginBottom: dtLabel ? 6 : 0}}>{n.text}</div>
+                {dtLabel && (
+                  <div style={{fontSize:11, display:"flex", alignItems:"center", gap:4, opacity: isRinging ? 1 : 0.65}}>
+                    <span style={{padding:"1px 6px", borderRadius:4, background:"rgba(0,0,0,0.08)"}}>{dtLabel}{alarmAt < new Date() ? " (経過)" : ""}</span>
+                  </div>
+                )}
+                <button onClick={() => del(n.id)} style={{
+                  position:"absolute", top:6, right:6, width:20, height:20,
+                  background:"rgba(0,0,0,0.1)", border:"none", borderRadius:4,
+                  color:"inherit", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:0.7,
+                }}>✕</button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <style>{`@keyframes stickyBlink { 0%,100%{opacity:1} 50%{opacity:0.2} }`}</style>
+    </>
+  );
+}
 
 // ===== SYNC STATUS INDICATOR =====
 function SyncIndicator({ syncing, syncError }) {
@@ -624,6 +903,26 @@ function BackupModal({ tasks, onRestore, onClose }) {
 
 // ===== MAIN APP =====
 export default function App() {
+  // ── 認証状態 ──────────────────────────────────────────────
+  const [user,      setUser]      = useState(undefined); // undefined=確認中, null=未ログイン, object=ログイン済み
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    // 初回：現在のセッションを確認
+    getSession().then(session => {
+      setUser(session?.user ?? null);
+      setAuthReady(true);
+    });
+    // 以降：認証状態の変化を監視
+    const unsub = onAuthChange(u => { setUser(u); setAuthReady(true); });
+    return unsub;
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOut();
+    setUser(null);
+  };
+
   // ── State ──────────────────────────────────────────────────
   const [tasks, setTasksState] = useState(() => {
     try { const s = localStorage.getItem("tasks"); return s ? JSON.parse(s) : DEFAULTS; }
@@ -774,6 +1073,14 @@ export default function App() {
     { id:"dashboard", label:"ダッシュボード", icon:"chart-bar"     },
   ];
 
+  // ── ログイン確認中 / 未ログイン ───────────────────────────
+  if (!authReady || user === undefined) {
+    return <div style={{minHeight:"100vh", background:"#13131f", display:"flex", alignItems:"center", justifyContent:"center"}}><div style={{width:32,height:32,borderRadius:"50%",border:"2.5px solid rgba(124,111,205,0.3)",borderTopColor:"#7c6fcd",animation:"spin 0.8s linear infinite"}} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+  }
+  if (!sbEnabled || user === null) {
+    return <LoginScreen onLogin={u => setUser(u)} />;
+  }
+
   return (
     <div className="min-h-screen" style={{background:"#13131f", fontFamily:"'Noto Sans JP','Inter',system-ui,sans-serif"}}>
       {/* NAV */}
@@ -805,11 +1112,20 @@ export default function App() {
         <div className="ml-auto flex items-center gap-3">
           {/* 同期ステータス表示 */}
           <SyncIndicator syncing={syncing} syncError={syncError} />
+          {/* ユーザー情報 */}
+          <span className="hidden sm:inline text-[11px]" style={{color:"#6b6b8e", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{user?.email}</span>
           {/* バックアップボタン */}
           <button onClick={() => setShowBackup(true)}
             className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] transition-colors"
             style={{background:"#25253a", border:"0.5px solid rgba(124,111,205,0.2)", color:"#9d9bbf"}}>
             <Icon name="database-export" size={14} /> バックアップ
+          </button>
+          {/* ログアウト */}
+          <button onClick={handleSignOut}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] transition-colors"
+            style={{background:"#25253a", border:"0.5px solid rgba(124,111,205,0.2)", color:"#9d9bbf"}}
+            title="ログアウト">
+            <Icon name="logout" size={14} /><span className="hidden sm:inline">ログアウト</span>
           </button>
           <button onClick={() => setModal({})}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-white"
@@ -888,6 +1204,8 @@ export default function App() {
           onClose={() => setShowBackup(false)}
         />
       )}
+      {/* 付箋パネル */}
+      <StickyPanel user={user} />
     </div>
   );
 }
