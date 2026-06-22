@@ -1,17 +1,574 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TaskBoard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<title>付箋メモ</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f9f8f6;
+    --surface: #ffffff;
+    --surface2: #f2f1ef;
+    --border: rgba(0,0,0,0.10);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #6b6b67;
+    --text3: #a0a09c;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --yellow-bg: #FAEEDA; --yellow-text: #633806; --yellow-border: #EF9F27;
+    --green-bg:  #EAF3DE; --green-text:  #27500A; --green-border:  #97C459;
+    --blue-bg:   #E6F1FB; --blue-text:   #0C447C; --blue-border:   #85B7EB;
+    --pink-bg:   #FBEAF0; --pink-text:   #72243E; --pink-border:   #ED93B1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --surface: #242422; --surface2: #2e2e2b;
+      --border: rgba(255,255,255,0.10); --border2: rgba(255,255,255,0.18);
+      --text: #f0efe8; --text2: #a0a09a; --text3: #666662;
+      --yellow-bg: #3a2a0a; --yellow-text: #FAC775;
+      --green-bg:  #172a08; --green-text:  #C0DD97;
+      --blue-bg:   #082040; --blue-text:   #85B7EB;
+      --pink-bg:   #2a0f1c; --pink-text:   #F4C0D1;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* ── ローディング ── */
+  #loading {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; z-index: 999;
+    transition: opacity 0.3s;
+  }
+  #loading.hide { opacity: 0; pointer-events: none; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 2.5px solid var(--border2);
+    border-top-color: var(--yellow-border);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── 認証画面 ── */
+  #auth-screen {
+    display: none;
+    min-height: 100dvh;
+    align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  #auth-screen.show { display: flex; }
+  .auth-card {
+    width: 100%; max-width: 360px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 36px 28px;
+  }
+  .auth-logo { font-size: 28px; margin-bottom: 8px; }
+  .auth-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .auth-sub { font-size: 14px; color: var(--text2); margin-bottom: 28px; }
+  .auth-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; display: block; }
+  .auth-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 15px;
+    margin-bottom: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .auth-input:focus { border-color: var(--yellow-border); }
+  .auth-btn {
+    width: 100%;
+    padding: 11px;
+    background: var(--yellow-border);
+    color: var(--yellow-text);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    margin-bottom: 10px;
+  }
+  .auth-btn:hover { opacity: 0.88; }
+  .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .auth-toggle { font-size: 13px; color: var(--text2); text-align: center; }
+  .auth-toggle a { color: var(--blue-text); cursor: pointer; text-decoration: none; }
+  .auth-err { font-size: 13px; color: #c0392b; margin-bottom: 10px; min-height: 18px; }
+
+  /* ── アプリ本体 ── */
+  #app { display: none; }
+  #app.show { display: block; }
+
+  /* ヘッダー */
+  .header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .header-title { font-size: 17px; font-weight: 600; flex: 1; }
+  .header-user { font-size: 12px; color: var(--text2); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border: 0.5px solid var(--border2);
+    border-radius: 8px;
+    background: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: var(--text2);
+    transition: background 0.12s;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { background: var(--surface2); }
+
+  /* フィルター */
+  .filter-bar {
+    display: flex; gap: 6px;
+    padding: 10px 14px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .pill {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 0.5px solid var(--border2);
+    background: none;
+    font-size: 13px;
+    color: var(--text2);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.12s;
+    flex-shrink: 0;
+  }
+  .pill.active { background: var(--yellow-bg); color: var(--yellow-text); border-color: var(--yellow-border); }
+
+  /* メインコンテンツ */
+  .main { padding: 14px; padding-bottom: 100px; }
+
+  /* 付箋グリッド */
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  /* 付箋カード */
+  .note-card {
+    border-radius: var(--radius);
+    padding: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    position: relative;
+    border: 0.5px solid transparent;
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.12s;
+    min-height: 90px;
+    word-break: break-word;
+  }
+  .note-card:active { transform: scale(0.97); }
+  .note-card.yellow { background: var(--yellow-bg); color: var(--yellow-text); border-color: var(--yellow-border); }
+  .note-card.green  { background: var(--green-bg);  color: var(--green-text);  border-color: var(--green-border); }
+  .note-card.blue   { background: var(--blue-bg);   color: var(--blue-text);   border-color: var(--blue-border); }
+  .note-card.pink   { background: var(--pink-bg);   color: var(--pink-text);   border-color: var(--pink-border); }
+
+  /* タイマーアラーム点滅 */
+  @keyframes blink {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+  .note-card.alarm { animation: blink 0.6s ease-in-out infinite; }
+
+  .note-text { margin-bottom: 8px; white-space: pre-wrap; }
+  .note-meta { font-size: 11px; opacity: 0.6; display: flex; align-items: center; gap: 4px; }
+  .note-meta .timer-tag {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 11px; opacity: 1;
+    padding: 1px 6px; border-radius: 4px;
+    background: rgba(0,0,0,0.08);
+  }
+  .note-del-btn {
+    position: absolute; top: 6px; right: 6px;
+    width: 22px; height: 22px;
+    border: none; border-radius: 4px;
+    background: rgba(0,0,0,0.10);
+    color: inherit; font-size: 13px;
+    cursor: pointer; display: none;
+    align-items: center; justify-content: center;
+    opacity: 0.7;
+  }
+  .note-card:hover .note-del-btn { display: flex; }
+
+  /* 空状態 */
+  .empty {
+    text-align: center; padding: 60px 20px;
+    color: var(--text3); font-size: 14px; line-height: 1.8;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* FAB */
+  .fab {
+    position: fixed; bottom: 24px; right: 20px;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--yellow-border);
+    color: var(--yellow-text);
+    border: none;
+    font-size: 26px; font-weight: 300;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+    transition: transform 0.15s;
+    z-index: 40;
+  }
+  .fab:active { transform: scale(0.92); }
+
+  /* ── モーダル共通 ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.45);
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  @media (min-width: 600px) {
+    .modal-overlay { align-items: center; }
+  }
+  .modal {
+    width: 100%; max-width: 480px;
+    background: var(--surface);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 20px 18px 32px;
+    max-height: 88dvh;
+    overflow-y: auto;
+  }
+  @media (min-width: 600px) {
+    .modal { border-radius: var(--radius-lg); max-height: 80vh; }
+  }
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: var(--border2);
+    border-radius: 2px;
+    margin: 0 auto 18px;
+  }
+  @media (min-width: 600px) { .modal-handle { display: none; } }
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+
+  /* 色選択 */
+  .color-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .color-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer; transition: transform 0.1s;
+  }
+  .color-dot:active { transform: scale(0.88); }
+  .color-dot.sel { border-color: var(--text); transform: scale(1.15); }
+  .color-dot.yellow { background: var(--yellow-border); }
+  .color-dot.green  { background: var(--green-border); }
+  .color-dot.blue   { background: var(--blue-border); }
+  .color-dot.pink   { background: var(--pink-border); }
+
+  /* テキストエリア */
+  .note-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 10px 12px;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.15s;
+    line-height: 1.6;
+  }
+  .note-textarea:focus { border-color: var(--yellow-border); }
+
+  /* タイマー設定 */
+  .timer-section {
+    margin-bottom: 16px;
+  }
+  .timer-toggle {
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; font-size: 14px; color: var(--text2);
+    margin-bottom: 10px; user-select: none;
+  }
+  .toggle-switch {
+    width: 40px; height: 22px;
+    background: var(--border2);
+    border-radius: 11px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 16px; height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .toggle-switch.on { background: var(--yellow-border); }
+  .toggle-switch.on::after { transform: translateX(18px); }
+  .timer-input-wrap { display: none; }
+  .timer-input-wrap.show { display: block; }
+  .timer-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .timer-input:focus { border-color: var(--yellow-border); }
+
+  /* ラベル */
+  .field-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; display: block; }
+
+  /* 保存ボタン */
+  .save-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--yellow-border);
+    color: var(--yellow-text);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px; font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .save-btn:hover { opacity: 0.88; }
+  .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* トースト */
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg);
+    padding: 10px 20px; border-radius: 20px;
+    font-size: 14px; white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+    z-index: 200;
+  }
+  .toast.show { opacity: 1; }
+
+  /* アラームバナー */
+  .alarm-banner {
+    display: none;
+    position: fixed; top: 0; left: 0; right: 0;
+    background: #E24B4A; color: white;
+    padding: 12px 16px;
+    font-size: 14px; font-weight: 500;
+    z-index: 300;
+    align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .alarm-banner.show { display: flex; }
+  .alarm-dismiss {
+    background: rgba(255,255,255,0.25);
+    border: none; color: white;
+    padding: 4px 12px; border-radius: 6px;
+    cursor: pointer; font-size: 13px; flex-shrink: 0;
+  }
+
+  /* PC: 右サイドパネル */
+  @media (min-width: 900px) {
+    #app.show { display: flex; height: 100dvh; overflow: hidden; }
+    .app-left {
+      flex: 1; display: flex; flex-direction: column;
+      overflow: hidden; border-right: 0.5px solid var(--border);
+    }
+    .app-left .main { flex: 1; overflow-y: auto; }
+    .side-panel {
+      width: 300px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      background: var(--surface);
+    }
+    .side-header {
+      padding: 16px;
+      border-bottom: 0.5px solid var(--border);
+      font-size: 15px; font-weight: 600;
+    }
+    .side-form {
+      padding: 16px;
+      flex: 1; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .fab { display: none; }
+    .modal-overlay.show { display: none !important; }
+  }
+
+  .app-left { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  .side-panel { display: none; }
+  @media (min-width: 900px) {
+    .side-panel { display: flex; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:14px;color:var(--text2)">読み込み中...</div>
+</div>
+
+<!-- 認証画面 -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">🗒️</div>
+    <div class="auth-title">付箋メモ</div>
+    <div class="auth-sub">どのデバイスでも同じメモが見られます</div>
+    <div class="auth-err" id="auth-err"></div>
+    <label class="auth-label">メールアドレス</label>
+    <input class="auth-input" type="email" id="auth-email" placeholder="you@example.com" autocomplete="email">
+    <label class="auth-label">パスワード</label>
+    <input class="auth-input" type="password" id="auth-pass" placeholder="••••••••" autocomplete="current-password">
+    <button class="auth-btn" id="auth-submit-btn" onclick="handleAuth()">ログイン</button>
+    <div class="auth-toggle">
+      <span id="auth-toggle-text">アカウントをお持ちでない方は</span>
+      <a onclick="toggleAuthMode()">新規登録</a>
+    </div>
+  </div>
+</div>
+
+<!-- アラームバナー -->
+<div class="alarm-banner" id="alarm-banner">
+  <span id="alarm-msg">⏰ タイマーが鳴っています！</span>
+  <button class="alarm-dismiss" onclick="dismissAlarm()">確認</button>
+</div>
+
+<!-- アプリ本体 -->
+<div id="app">
+  <div class="app-left">
+    <!-- ヘッダー -->
+    <div class="header">
+      <span style="font-size:20px">🗒️</span>
+      <span class="header-title">付箋メモ</span>
+      <span class="header-user" id="header-user"></span>
+      <button class="icon-btn" onclick="handleSignOut()" title="ログアウト">↩</button>
+    </div>
+
+    <!-- フィルター -->
+    <div class="filter-bar">
+      <button class="pill active" onclick="setFilter('all',this)">すべて</button>
+      <button class="pill" onclick="setFilter('yellow',this)">🟡 黄</button>
+      <button class="pill" onclick="setFilter('green',this)">🟢 緑</button>
+      <button class="pill" onclick="setFilter('blue',this)">🔵 青</button>
+      <button class="pill" onclick="setFilter('pink',this)">🩷 ピンク</button>
+      <button class="pill" onclick="setFilter('timer',this)">⏰ タイマー</button>
+    </div>
+
+    <!-- メイン -->
+    <div class="main">
+      <div class="notes-grid" id="notes-grid"></div>
+      <div class="empty" id="empty-state" style="display:none">
+        <div class="empty-icon">📋</div>
+        付箋がありません<br>右下の＋ボタンから追加できます
+      </div>
+    </div>
+  </div>
+
+  <!-- PC用サイドパネル -->
+  <div class="side-panel">
+    <div class="side-header">新しい付箋</div>
+    <div class="side-form">
+      <div>
+        <label class="field-label">色</label>
+        <div class="color-row" id="side-color-row">
+          <div class="color-dot yellow sel" data-color="yellow" onclick="selectColor('yellow','side')"></div>
+          <div class="color-dot green"  data-color="green"  onclick="selectColor('green','side')"></div>
+          <div class="color-dot blue"   data-color="blue"   onclick="selectColor('blue','side')"></div>
+          <div class="color-dot pink"   data-color="pink"   onclick="selectColor('pink','side')"></div>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">メモ内容</label>
+        <textarea class="note-textarea" id="side-text" placeholder="ここにメモを入力…" rows="5"></textarea>
+      </div>
+      <div class="timer-section">
+        <div class="timer-toggle" onclick="toggleTimer('side')">
+          <div class="toggle-switch" id="side-timer-switch"></div>
+          <span>タイマーをセット</span>
+        </div>
+        <div class="timer-input-wrap" id="side-timer-wrap">
+          <label class="field-label">日時</label>
+          <input class="timer-input" type="datetime-local" id="side-timer-dt">
+        </div>
+      </div>
+      <button class="save-btn" id="side-save-btn" onclick="saveNote('side')">保存する</button>
+    </div>
+  </div>
+
+  <!-- FAB (モバイル) -->
+  <button class="fab" onclick="openModal()" aria-label="付箋を追加">＋</button>
+</div>
+
+<!-- モバイル用モーダル -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOnBg(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">新しい付箋</div>
+    <label class="field-label">色</label>
+    <div class="color-row" id="modal-color-row">
+      <div class="color-dot yellow sel" data-color="yellow" onclick="selectColor('yellow','modal')"></div>
+      <div class="color-dot green"  data-color="green"  onclick="selectColor('green','modal')"></div>
+      <div class="color-dot blue"   data-color="blue"   onclick="selectColor('blue','modal')"></div>
+      <div class="color-dot pink"   data-color="pink"   onclick="selectColor('pink','modal')"></div>
+    </div>
+    <label class="field-label">メモ内容</label>
+    <textarea class="note-textarea" id="modal-text" placeholder="ここにメモを入力…" rows="4"></textarea>
+    <div class="timer-section">
+      <div class="timer-toggle" onclick="toggleTimer('modal')">
+        <div class="toggle-switch" id="modal-timer-switch"></div>
+        <span>タイマーをセット</span>
+      </div>
+      <div class="timer-input-wrap" id="modal-timer-wrap">
+        <label class="field-label">日時</label>
+        <input class="timer-input" type="datetime-local" id="modal-timer-dt">
+      </div>
+    </div>
+    <button class="save-btn" id="modal-save-btn" onclick="saveNote('modal')">保存する</button>
+  </div>
+</div>
+
+<!-- トースト -->
+<div class="toast" id="toast"></div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+</body>
 </html>
