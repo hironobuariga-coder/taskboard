@@ -446,7 +446,7 @@ function Modal({ task, onSave, onClose }) {
         <div className="mt-5 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-lg border border-cyan-500/20 px-4 py-2 text-[13px] text-[#94a3b8] hover:bg-[#1a1d26]">キャンセル</button>
           <button onClick={() => { if(form.title.trim()) onSave(form); }}
-            className="rounded-lg bg-violet-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-violet-500">保存</button>
+            className="rounded-lg bg-[#00b4d8] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0096b4]">保存</button>
         </div>
       </div>
     </div>
@@ -539,49 +539,68 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
     setOverInfo(null); setDraggingId(null);
   };
 
+  // 列ごとのカードリストをレンダリングするヘルパー
+  const renderCol = (st) => {
+    const col = STA[st];
+    const colTasks = sortTasks(tasks.filter(t => t.status === st));
+    return (
+      <div key={st}
+        className={`rounded-xl border ${col.accent} ${col.bg} p-3 transition-colors flex flex-col`}
+        onDragOver={e => handleColDragOver(e, st)}
+        onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(null); }}
+        onDrop={e => handleDrop(e, st, null)}
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <span className={`text-[13px] font-semibold ${col.header}`}>{STATUS_LABEL[st]||st}</span>
+          <span className="rounded-full bg-[#1a1d26] border border-cyan-500/10 px-2 py-0.5 text-[11px] text-[#94a3b8]">{colTasks.length}</span>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          {colTasks.map(t => {
+            const isOver = overInfo && overInfo.cardId === t.id && draggingId !== t.id;
+            return (
+              <div key={t.id}
+                style={{
+                  borderTop: isOver && overInfo.pos==="before" ? "2px solid #00b4d8" : "2px solid transparent",
+                  borderBottom: isOver && overInfo.pos==="after" ? "2px solid #00b4d8" : "2px solid transparent",
+                }}
+                onDragOver={e => handleCardDragOver(e, st, t.id)}
+                onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(o => o?.cardId===t.id ? null : o); }}
+                onDrop={e => handleDrop(e, st, t.id)}
+              >
+                <TaskCard task={t} onEdit={onEdit} onDelete={onDelete}
+                  onDragStart={id => { setDraggingId(id); }}
+                  onDragEnd={() => { setDraggingId(null); setOverInfo(null); }}
+                  isDragging={draggingId === t.id} />
+              </div>
+            );
+          })}
+          {overInfo && overInfo.col===st && !overInfo.cardId && (
+            <div style={{height:"2px", background:"#00b4d8", borderRadius:"1px", margin:"2px 0"}} />
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      {STATUSES.map(st => {
-        const col = STA[st];
-        const colTasks = sortTasks(tasks.filter(t => t.status === st));
-        return (
-          <div key={st}
-            className={`min-h-[200px] rounded-xl border ${col.accent} ${col.bg} p-3 transition-colors`}
-            onDragOver={e => handleColDragOver(e, st)}
-            onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(null); }}
-            onDrop={e => handleDrop(e, st, null)}
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <span className={`text-[13px] font-semibold ${col.header}`}>{STATUS_LABEL[st]||st}</span>
-              <span className="rounded-full bg-[#1a1d26] border border-cyan-500/10 px-2 py-0.5 text-[11px] text-[#94a3b8]">{colTasks.length}</span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {colTasks.map(t => {
-                const isOver = overInfo && overInfo.cardId === t.id && draggingId !== t.id;
-                return (
-                  <div key={t.id}
-                    style={{
-                      borderTop: isOver && overInfo.pos==="before" ? "2px solid #00b4d8" : "2px solid transparent",
-                      borderBottom: isOver && overInfo.pos==="after" ? "2px solid #00b4d8" : "2px solid transparent",
-                    }}
-                    onDragOver={e => handleCardDragOver(e, st, t.id)}
-                    onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(o => o?.cardId===t.id ? null : o); }}
-                    onDrop={e => handleDrop(e, st, t.id)}
-                  >
-                    <TaskCard task={t} onEdit={onEdit} onDelete={onDelete}
-                      onDragStart={id => { setDraggingId(id); }}
-                      onDragEnd={() => { setDraggingId(null); setOverInfo(null); }}
-                      isDragging={draggingId === t.id} />
-                  </div>
-                );
-              })}
-              {overInfo && overInfo.col===st && !overInfo.cardId && (
-                <div style={{height:"2px", background:"#00b4d8", borderRadius:"1px", margin:"2px 0"}} />
-              )}
-            </div>
-          </div>
-        );
-      })}
+    // 未着手2列 + 進行中2列 + 返事待ち1列 + 完了1列 = 6fr合計
+    <div style={{display:"grid", gridTemplateColumns:"2fr 2fr 1fr 1fr", gap:"12px", alignItems:"start"}}>
+      {/* 未着手：2列分 */}
+      <div style={{gridColumn:"span 2"}}>
+        {renderCol("Todo")}
+      </div>
+      {/* 進行中：2列分 */}
+      <div style={{gridColumn:"span 2"}}>
+        {renderCol("In Progress")}
+      </div>
+      {/* 返事待ち：1列 */}
+      <div style={{gridColumn:"span 1"}}>
+        {renderCol("Waiting")}
+      </div>
+      {/* 完了：1列 */}
+      <div style={{gridColumn:"span 1"}}>
+        {renderCol("Done")}
+      </div>
     </div>
   );
 }
@@ -1190,7 +1209,7 @@ export default function App() {
       )}
 
       {/* CONTENT */}
-      <main className="p-5">
+      <main className="p-4">
         {view === "kanban"    && <KanbanView    tasks={filtered} onEdit={t => setModal(t)} onDelete={del} onMove={move} onReorder={reorder} sortKey={sortKey} sortDir={sortDir} />}
         {view === "list"      && <ListView      tasks={filtered} onEdit={t => setModal(t)} onDelete={del} onStatusChange={statusChange} />}
         {view === "dashboard" && <Dashboard     tasks={tasks} />}
