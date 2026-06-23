@@ -1126,35 +1126,76 @@ export default function App() {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
   };
 
+  // ── ステータス変更を伴う移動（列またぎ） ──
   const move = (id, status, targetId, pos) => {
     setTasks(ts => {
-      const colTasks = ts.filter(t => t.status === status).sort((a,b) => (a.order??0)-(b.order??0));
-      let insertIdx = targetId ? colTasks.findIndex(t => t.id === targetId) : colTasks.length;
-      if(pos === "after" && insertIdx >= 0) insertIdx += 1;
-      const baseOrder = insertIdx >= 0 ? insertIdx - 0.5 : colTasks.length;
-      const updated = ts.map(t => t.id===id ? {...t, status, order: baseOrder, updatedAt: Date.now()} : t);
-      const newCol = updated.filter(t => t.status === status).sort((a,b) => (a.order??0)-(b.order??0));
+      // 移動先ステータスのタスク一覧（移動元タスクは除外）
+      const destTasks = ts
+        .filter(t => t.status === status && t.id !== id)
+        .sort((a,b) => (a.order??0)-(b.order??0));
+
+      // 挿入位置を決定
+      let insertIdx = destTasks.length; // デフォルト：末尾
+      if (targetId) {
+        const targetIdx = destTasks.findIndex(t => t.id === targetId);
+        if (targetIdx >= 0) {
+          insertIdx = pos === "after" ? targetIdx + 1 : targetIdx;
+        }
+      }
+
+      // 挿入後の並び順を作成
+      const newOrder = [...destTasks];
+      newOrder.splice(insertIdx, 0, { id }); // プレースホルダーとして挿入
+
+      // 全タスクにorderを振り直し
       const orderMap = {};
-      newCol.forEach((t, i) => { orderMap[t.id] = i; });
-      return updated.map(t => t.status === status && orderMap[t.id] !== undefined ? {...t, order: orderMap[t.id]} : t);
+      newOrder.forEach((t, i) => { orderMap[t.id] = i; });
+
+      return ts.map(t => {
+        if (t.id === id) return { ...t, status, order: orderMap[id] ?? insertIdx, updatedAt: Date.now() };
+        if (t.status === status && orderMap[t.id] !== undefined) return { ...t, order: orderMap[t.id] };
+        return t;
+      });
     });
   };
 
+  // ── 同ステータス内の並び替え（グループ内・列またぎ含む） ──
   const reorder = (dragId, targetId, pos, status) => {
+    if (dragId === targetId) return;
     setTasks(ts => {
-      const colTasks = ts.filter(t => t.status === status).sort((a,b) => (a.order??0)-(b.order??0));
+      // 同ステータスのタスクをorderで並べる
+      const colTasks = ts
+        .filter(t => t.status === status)
+        .sort((a,b) => (a.order??0)-(b.order??0));
+
       const fromIdx = colTasks.findIndex(t => t.id === dragId);
-      let toIdx = targetId ? colTasks.findIndex(t => t.id === targetId) : colTasks.length - 1;
-      if(fromIdx < 0 || toIdx < 0) return ts;
-      if(pos === "after" && targetId) toIdx = toIdx + 1;
-      if(fromIdx === toIdx || fromIdx === toIdx - 1 && pos === "after") return ts;
-      const reordered = [...colTasks];
-      const [moved] = reordered.splice(fromIdx, 1);
-      const insertAt = fromIdx < toIdx ? toIdx - 1 : toIdx;
-      reordered.splice(insertAt, 0, moved);
+      if (fromIdx < 0) return ts;
+
+      // ドラッグ元を取り除いた配列
+      const without = [...colTasks];
+      without.splice(fromIdx, 1);
+
+      // 挿入位置を決定
+      let insertIdx = without.length; // デフォルト：末尾
+      if (targetId) {
+        const targetIdx = without.findIndex(t => t.id === targetId);
+        if (targetIdx >= 0) {
+          insertIdx = pos === "after" ? targetIdx + 1 : targetIdx;
+        }
+      }
+
+      // 挿入
+      without.splice(insertIdx, 0, colTasks[fromIdx]);
+
+      // orderを0始まりで振り直し
       const orderMap = {};
-      reordered.forEach((t, i) => { orderMap[t.id] = i; });
-      return ts.map(t => t.status === status && orderMap[t.id] !== undefined ? {...t, order: orderMap[t.id]} : t);
+      without.forEach((t, i) => { orderMap[t.id] = i; });
+
+      return ts.map(t =>
+        t.status === status && orderMap[t.id] !== undefined
+          ? { ...t, order: orderMap[t.id] }
+          : t
+      );
     });
   };
 
