@@ -1,29 +1,30 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase, sbEnabled, getSession, signIn, signUp, signOut, onAuthChange } from "./supabaseClient";
 
-// ===== DESIGN TOKENS (案C: ダーク + パープルアクセント) =====
-// bg:      #13131f / #1c1c2e / #25253a
-// accent:  #7c6fcd (primary), #c4bef5 (text), #2d2b55 (bg)
-// green:   #1D9E75 / #5DCAA5 / #0d3326
-// amber:   #EF9F27 / #FAC775 / #3a2200
-// red:     #E24B4A / #F09595 / #3a0e0e
+// ===== DESIGN TOKENS (テック × シアン × ダーク) =====
+// bg:      #0d0f12 / #141720 / #1a1d26
+// accent:  #00b4d8 (cyan), #48cae4 (light), #002a36 (bg)
+// green:   #10b981 / #34d399 / #022c22
+// amber:   #f59e0b / #fbbf24 / #2d1a00
+// red:     #ef4444 / #f87171 / #2d0a0a
 // font:    Noto Sans JP + Inter
 // icons:   Tabler outline
 
-const STATUSES = ["Todo", "In Progress", "Done"];
+const STATUSES = ["Todo", "In Progress", "Waiting", "Done"];
 const PRIORITIES = ["High", "Medium", "Low"];
-const STATUS_LABEL = {"Todo":"未着手", "In Progress":"進行中", "Done":"完了"};
+const STATUS_LABEL = {"Todo":"未着手", "In Progress":"進行中", "Waiting":"返事待ち", "Done":"完了"};
 const PRI_LABEL = {"High":"高", "Medium":"中", "Low":"低"};
 
 const PRI = {
   High:   { ring: "border-l-red-400",    badge: "bg-red-950/60 text-red-300 border border-red-500/30",    dot: "bg-red-400"    },
   Medium: { ring: "border-l-amber-400",  badge: "bg-amber-950/60 text-amber-300 border border-amber-500/30", dot: "bg-amber-400" },
-  Low:    { ring: "border-l-violet-400", badge: "bg-violet-950/60 text-violet-300 border border-violet-500/30", dot: "bg-violet-400" },
+  Low:    { ring: "border-l-cyan-400",   badge: "bg-cyan-950/60 text-cyan-300 border border-cyan-500/30",     dot: "bg-cyan-400"   },
 };
 
 const STA = {
   "Todo":        { header: "text-slate-300",   accent: "border-slate-600",   bg: "bg-slate-800/40",   badge: "bg-slate-800 text-slate-300 border border-slate-600/50" },
-  "In Progress": { header: "text-violet-300",  accent: "border-violet-500",  bg: "bg-violet-950/30",  badge: "bg-violet-950/70 text-violet-300 border border-violet-500/40" },
+  "In Progress": { header: "text-cyan-300",    accent: "border-cyan-500",    bg: "bg-cyan-950/30",    badge: "bg-cyan-950/70 text-cyan-300 border border-cyan-500/40" },
+  "Waiting":     { header: "text-amber-300",   accent: "border-amber-500",   bg: "bg-amber-950/20",   badge: "bg-amber-950/60 text-amber-300 border border-amber-500/40" },
   "Done":        { header: "text-emerald-300", accent: "border-emerald-500", bg: "bg-emerald-950/20", badge: "bg-emerald-950/60 text-emerald-300 border border-emerald-500/40" },
 };
 
@@ -110,34 +111,34 @@ function LoginScreen({ onLogin }) {
   };
 
   return (
-    <div style={{minHeight:"100vh", background:"#13131f", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Noto Sans JP','Inter',sans-serif"}}>
-      <div style={{width:"100%", maxWidth:380, background:"#1c1c2e", border:"0.5px solid rgba(124,111,205,0.25)", borderRadius:16, padding:"36px 28px"}}>
-        <div style={{fontSize:22, fontWeight:600, color:"#e8e6ff", marginBottom:4}}>
-          Task<span style={{color:"#c4bef5"}}>Board</span>
+    <div style={{minHeight:"100vh", background:"#0d0f12", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Noto Sans JP','Inter',sans-serif"}}>
+      <div style={{width:"100%", maxWidth:380, background:"#141720", border:"0.5px solid rgba(0,180,216,0.20)", borderRadius:12, padding:"36px 28px"}}>
+        <div style={{fontSize:22, fontWeight:600, color:"#e2e8f0", marginBottom:4}}>
+          Task<span style={{color:"#00b4d8"}}>Board</span>
         </div>
-        <div style={{fontSize:13, color:"#9d9bbf", marginBottom:28}}>
+        <div style={{fontSize:13, color:"#94a3b8", marginBottom:28}}>
           {mode === "login" ? "ログインしてください" : "新規アカウントを作成"}
         </div>
         {err && <div style={{fontSize:13, color:"#f09595", marginBottom:12, padding:"8px 12px", background:"rgba(226,75,74,0.1)", borderRadius:8}}>{err}</div>}
         {msg && <div style={{fontSize:13, color:"#5DCAA5", marginBottom:12, padding:"8px 12px", background:"rgba(29,158,117,0.1)", borderRadius:8}}>{msg}</div>}
-        <div style={{fontSize:12, color:"#9d9bbf", marginBottom:6}}>メールアドレス</div>
+        <div style={{fontSize:12, color:"#94a3b8", marginBottom:6}}>メールアドレス</div>
         <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
           onKeyDown={e=>e.key==="Enter"&&handle()}
           placeholder="you@example.com" autoComplete="email"
-          style={{width:"100%", padding:"10px 12px", borderRadius:8, border:"0.5px solid rgba(124,111,205,0.3)", background:"#13131f", color:"#e8e6ff", fontSize:14, marginBottom:12, outline:"none"}} />
-        <div style={{fontSize:12, color:"#9d9bbf", marginBottom:6}}>パスワード</div>
+          style={{width:"100%", padding:"10px 12px", borderRadius:8, border:"0.5px solid rgba(0,180,216,0.25)", background:"#0d0f12", color:"#e2e8f0", fontSize:14, marginBottom:12, outline:"none"}} />
+        <div style={{fontSize:12, color:"#94a3b8", marginBottom:6}}>パスワード</div>
         <input type="password" value={pass} onChange={e=>setPass(e.target.value)}
           onKeyDown={e=>e.key==="Enter"&&handle()}
           placeholder="••••••••" autoComplete={mode==="login"?"current-password":"new-password"}
-          style={{width:"100%", padding:"10px 12px", borderRadius:8, border:"0.5px solid rgba(124,111,205,0.3)", background:"#13131f", color:"#e8e6ff", fontSize:14, marginBottom:20, outline:"none"}} />
+          style={{width:"100%", padding:"10px 12px", borderRadius:8, border:"0.5px solid rgba(0,180,216,0.25)", background:"#0d0f12", color:"#e2e8f0", fontSize:14, marginBottom:20, outline:"none"}} />
         <button onClick={handle} disabled={loading}
-          style={{width:"100%", padding:"11px", borderRadius:8, background:"#7c6fcd", color:"#fff", border:"none", fontSize:15, fontWeight:500, cursor:loading?"not-allowed":"pointer", opacity:loading?0.6:1, marginBottom:12}}>
+          style={{width:"100%", padding:"11px", borderRadius:6, background:"#00b4d8", color:"#fff", border:"none", fontSize:15, fontWeight:500, cursor:loading?"not-allowed":"pointer", opacity:loading?0.6:1, marginBottom:12}}>
           {loading ? "処理中..." : mode === "login" ? "ログイン" : "新規登録"}
         </button>
-        <div style={{textAlign:"center", fontSize:13, color:"#9d9bbf"}}>
+        <div style={{textAlign:"center", fontSize:13, color:"#94a3b8"}}>
           {mode === "login" ? "アカウントをお持ちでない方は" : "すでにアカウントをお持ちの方は"}
           <span onClick={()=>{setMode(mode==="login"?"signup":"login");setErr("");setMsg("");}}
-            style={{color:"#c4bef5", cursor:"pointer", marginLeft:4}}>
+            style={{color:"#48cae4", cursor:"pointer", marginLeft:4}}>
             {mode === "login" ? "新規登録" : "ログイン"}
           </span>
         </div>
@@ -249,17 +250,17 @@ function StickyPanel({ user }) {
       {/* 右端タブ */}
       <div onClick={() => setOpen(o => !o)} style={{
         position:"fixed", right: open ? 292 : 0, top:"50%", transform:"translateY(-50%)",
-        width:28, background:"#1c1c2e", borderLeft:"0.5px solid rgba(124,111,205,0.25)",
-        borderTop:"0.5px solid rgba(124,111,205,0.25)", borderBottom:"0.5px solid rgba(124,111,205,0.25)",
+        width:28, background:"#141720", borderLeft:"0.5px solid rgba(0,180,216,0.20)",
+        borderTop:"0.5px solid rgba(0,180,216,0.20)", borderBottom:"0.5px solid rgba(0,180,216,0.20)",
         borderRadius:"8px 0 0 8px", padding:"16px 0", cursor:"pointer", zIndex:1000,
         display:"flex", flexDirection:"column", alignItems:"center", gap:8,
         transition:"right 0.25s ease",
       }}>
-        <i className="ti ti-note" style={{fontSize:16, color:"#c4bef5"}} />
-        <span style={{writingMode:"vertical-rl", fontSize:10, color:"#9d9bbf", letterSpacing:"0.05em", userSelect:"none"}}>付箋</span>
+        <i className="ti ti-note" style={{fontSize:16, color:"#48cae4"}} />
+        <span style={{writingMode:"vertical-rl", fontSize:10, color:"#94a3b8", letterSpacing:"0.05em", userSelect:"none"}}>付箋</span>
         {(notes.length > 0 || alarmCount > 0) && (
           <span style={{
-            width:16, height:16, borderRadius:"50%", background: alarmCount>0 ? "#E24B4A" : "#7c6fcd",
+            width:16, height:16, borderRadius:"50%", background: alarmCount>0 ? "#ef4444" : "#00b4d8",
             color:"#fff", fontSize:9, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:600,
           }}>{alarmCount > 0 ? "!" : notes.length}</span>
         )}
@@ -268,57 +269,57 @@ function StickyPanel({ user }) {
       {/* パネル本体 */}
       <div style={{
         position:"fixed", right: open ? 0 : -292, top:0, width:292, height:"100vh",
-        background:"#1c1c2e", borderLeft:"0.5px solid rgba(124,111,205,0.25)",
+        background:"#141720", borderLeft:"0.5px solid rgba(0,180,216,0.15)",
         zIndex:999, transition:"right 0.25s ease",
         display:"flex", flexDirection:"column", overflow:"hidden",
       }}>
         {/* ヘッダー */}
-        <div style={{padding:"12px 14px 10px", borderBottom:"0.5px solid rgba(124,111,205,0.15)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0}}>
-          <span style={{fontSize:14, fontWeight:500, color:"#e8e6ff", display:"flex", alignItems:"center", gap:6}}>
-            <i className="ti ti-note" style={{fontSize:15, color:"#c4bef5"}} /> 付箋メモ
+        <div style={{padding:"12px 14px 10px", borderBottom:"0.5px solid rgba(0,180,216,0.12)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0}}>
+          <span style={{fontSize:14, fontWeight:500, color:"#e2e8f0", display:"flex", alignItems:"center", gap:6}}>
+            <i className="ti ti-note" style={{fontSize:15, color:"#48cae4"}} /> 付箋メモ
           </span>
-          <button onClick={() => setOpen(false)} style={{background:"none", border:"none", color:"#9d9bbf", cursor:"pointer", fontSize:16}}>
+          <button onClick={() => setOpen(false)} style={{background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:16}}>
             <i className="ti ti-x" />
           </button>
         </div>
 
         {/* フィルター */}
-        <div style={{display:"flex", gap:4, padding:"8px 10px", borderBottom:"0.5px solid rgba(124,111,205,0.1)", overflowX:"auto", flexShrink:0}}>
+        <div style={{display:"flex", gap:4, padding:"8px 10px", borderBottom:"0.5px solid rgba(0,180,216,0.10)", overflowX:"auto", flexShrink:0}}>
           {[["all","すべて"],["yellow","黄"],["green","緑"],["blue","青"],["pink","ピンク"],["timer","⏰"]].map(([f,label]) => (
             <button key={f} onClick={() => setFilter(f)}
-              style={{padding:"3px 10px", borderRadius:12, border:"0.5px solid rgba(124,111,205,0.3)", background: filter===f ? "rgba(124,111,205,0.25)" : "none", color: filter===f ? "#c4bef5" : "#9d9bbf", fontSize:11, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0}}>
+              style={{padding:"3px 10px", borderRadius:12, border:"0.5px solid rgba(0,180,216,0.25)", background: filter===f ? "rgba(0,180,216,0.15)" : "none", color: filter===f ? "#48cae4" : "#94a3b8", fontSize:11, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0}}>
               {label}
             </button>
           ))}
         </div>
 
         {/* 入力エリア */}
-        <div style={{padding:"10px 12px", borderBottom:"0.5px solid rgba(124,111,205,0.1)", flexShrink:0}}>
+        <div style={{padding:"10px 12px", borderBottom:"0.5px solid rgba(0,180,216,0.10)", flexShrink:0}}>
           <div style={{display:"flex", gap:8, marginBottom:8}}>
             {Object.entries(COLORS).map(([k,v]) => (
               <div key={k} onClick={() => setColor(k)} style={{
                 width:22, height:22, borderRadius:"50%", background:v.border,
-                border: color===k ? "2px solid #e8e6ff" : "2px solid transparent",
+                border: color===k ? "2px solid #e2e8f0" : "2px solid transparent",
                 cursor:"pointer", transform: color===k ? "scale(1.2)" : "scale(1)", transition:"all 0.1s",
               }} />
             ))}
           </div>
           <textarea value={text} onChange={e=>setText(e.target.value)}
             placeholder="メモを入力…" rows={3}
-            style={{width:"100%", padding:"8px 10px", borderRadius:8, border:"0.5px solid rgba(124,111,205,0.3)", background:"#13131f", color:"#e8e6ff", fontSize:13, fontFamily:"inherit", resize:"vertical", outline:"none", marginBottom:8, lineHeight:1.6}} />
+            style={{width:"100%", padding:"8px 10px", borderRadius:8, border:"0.5px solid rgba(0,180,216,0.25)", background:"#0d0f12", color:"#e2e8f0", fontSize:13, fontFamily:"inherit", resize:"vertical", outline:"none", marginBottom:8, lineHeight:1.6}} />
           {/* タイマートグル */}
           <div style={{display:"flex", alignItems:"center", gap:8, marginBottom: timerOn ? 8 : 0, cursor:"pointer"}} onClick={() => setTimerOn(o=>!o)}>
-            <div style={{width:34, height:18, borderRadius:9, background: timerOn ? "#7c6fcd" : "rgba(255,255,255,0.15)", position:"relative", transition:"background 0.2s", flexShrink:0}}>
+            <div style={{width:34, height:18, borderRadius:9, background: timerOn ? "#00b4d8" : "rgba(255,255,255,0.12)", position:"relative", transition:"background 0.2s", flexShrink:0}}>
               <div style={{position:"absolute", top:2, left: timerOn ? 16 : 2, width:14, height:14, borderRadius:"50%", background:"white", transition:"left 0.2s"}} />
             </div>
-            <span style={{fontSize:12, color:"#9d9bbf"}}>タイマーをセット</span>
+            <span style={{fontSize:12, color:"#94a3b8"}}>タイマーをセット</span>
           </div>
           {timerOn && (
             <input type="datetime-local" value={alarmDt} onChange={e=>setAlarmDt(e.target.value)}
-              style={{width:"100%", padding:"7px 10px", borderRadius:8, border:"0.5px solid rgba(124,111,205,0.3)", background:"#13131f", color:"#e8e6ff", fontSize:13, outline:"none", marginBottom:8}} />
+              style={{width:"100%", padding:"7px 10px", borderRadius:8, border:"0.5px solid rgba(0,180,216,0.25)", background:"#0d0f12", color:"#e2e8f0", fontSize:13, outline:"none", marginBottom:8}} />
           )}
           <button onClick={save} disabled={saving || !text.trim()}
-            style={{width:"100%", padding:"8px", borderRadius:8, background:"#7c6fcd", color:"#fff", border:"none", fontSize:13, fontWeight:500, cursor:saving||!text.trim()?"not-allowed":"pointer", opacity:saving||!text.trim()?0.5:1}}>
+            style={{width:"100%", padding:"8px", borderRadius:8, background:"#00b4d8", color:"#fff", border:"none", fontSize:13, fontWeight:500, cursor:saving||!text.trim()?"not-allowed":"pointer", opacity:saving||!text.trim()?0.5:1}}>
             {saving ? "保存中…" : "保存"}
           </button>
         </div>
@@ -326,7 +327,7 @@ function StickyPanel({ user }) {
         {/* 付箋リスト */}
         <div style={{flex:1, overflowY:"auto", padding:"10px 10px 20px"}}>
           {filtered.length === 0 && (
-            <div style={{textAlign:"center", padding:"40px 16px", color:"#6b6b7e", fontSize:13, lineHeight:1.8}}>
+            <div style={{textAlign:"center", padding:"40px 16px", color:"#475569", fontSize:13, lineHeight:1.8}}>
               付箋がありません<br />上から追加できます
             </div>
           )}
@@ -368,7 +369,7 @@ function StickyPanel({ user }) {
 function SyncIndicator({ syncing, syncError }) {
   if (!sbEnabled) return null;
   if (syncing) return (
-    <span className="flex items-center gap-1 text-[11px]" style={{color:"#9d9bbf"}}>
+    <span className="flex items-center gap-1 text-[11px]" style={{color:"#94a3b8"}}>
       <Icon name="refresh" size={11} className="animate-spin" /> 同期中
     </span>
   );
@@ -390,60 +391,60 @@ function Modal({ task, onSave, onClose }) {
   const up = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-xl border border-violet-500/20 bg-[#1c1c2e] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-xl border border-cyan-500/20 bg-[#141720] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-[#e2e0ff]">{task ? "タスクを編集" : "タスクを追加"}</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-[#9d9bbf] hover:bg-[#25253a] hover:text-[#e2e0ff]">
+          <h2 className="text-[15px] font-semibold text-[#e2e8f0]">{task ? "タスクを編集" : "タスクを追加"}</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-[#94a3b8] hover:bg-[#1a1d26] hover:text-[#e2e8f0]">
             <Icon name="x" size={18} />
           </button>
         </div>
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-[11px] font-medium text-[#9d9bbf]">タイトル</label>
+            <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">タイトル</label>
             <input value={form.title} onChange={up("title")} placeholder="タスク名を入力"
-              className="w-full rounded-lg border border-violet-500/20 bg-[#25253a] px-3 py-2 text-[13px] text-[#e2e0ff] placeholder-[#5e5c80] outline-none focus:border-violet-400/50 focus:ring-1 focus:ring-violet-400/30" />
+              className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2 text-[13px] text-[#e2e8f0] placeholder-[#475569] outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30" />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] font-medium text-[#9d9bbf]">詳細</label>
+            <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">詳細</label>
             <textarea value={form.description} onChange={up("description")} rows={3} placeholder="詳細・メモ"
-              className="w-full rounded-lg border border-violet-500/20 bg-[#25253a] px-3 py-2 text-[13px] text-[#e2e0ff] placeholder-[#5e5c80] outline-none focus:border-violet-400/50 focus:ring-1 focus:ring-violet-400/30 resize-none" />
+              className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2 text-[13px] text-[#e2e8f0] placeholder-[#475569] outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30 resize-none" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-[#9d9bbf]">ステータス</label>
+              <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">ステータス</label>
               <select value={form.status} onChange={up("status")}
-                className="w-full rounded-lg border border-violet-500/20 bg-[#25253a] px-3 py-2 text-[13px] text-[#e2e0ff] outline-none focus:border-violet-400/50">
+                className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2 text-[13px] text-[#e2e8f0] outline-none focus:border-cyan-400/50">
                 {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABEL[s]||s}</option>)}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-[#9d9bbf]">優先度</label>
+              <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">優先度</label>
               <select value={form.priority} onChange={up("priority")}
-                className="w-full rounded-lg border border-violet-500/20 bg-[#25253a] px-3 py-2 text-[13px] text-[#e2e0ff] outline-none focus:border-violet-400/50">
+                className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2 text-[13px] text-[#e2e8f0] outline-none focus:border-cyan-400/50">
                 {PRIORITIES.map(p => <option key={p} value={p}>{PRI_LABEL[p]||p}</option>)}
               </select>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-[#9d9bbf]">期日</label>
+              <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">期日</label>
               <input type="date" value={form.dueDate} onChange={up("dueDate")}
-                className="w-full rounded-lg border border-violet-500/20 bg-[#25253a] px-3 py-2 text-[13px] text-[#e2e0ff] outline-none focus:border-violet-400/50" />
+                className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2 text-[13px] text-[#e2e8f0] outline-none focus:border-cyan-400/50" />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-[#9d9bbf]">見積(h)</label>
+              <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">見積(h)</label>
               <input type="number" min="0" step="0.5" value={form.estHours} onChange={up("estHours")}
-                className="w-full rounded-lg border border-violet-500/20 bg-[#25253a] px-3 py-2 text-[13px] text-[#e2e0ff] outline-none focus:border-violet-400/50" />
+                className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2 text-[13px] text-[#e2e8f0] outline-none focus:border-cyan-400/50" />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-[#9d9bbf]">実績(h)</label>
+              <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">実績(h)</label>
               <input type="number" min="0" step="0.5" value={form.actHours} onChange={up("actHours")}
-                className="w-full rounded-lg border border-violet-500/20 bg-[#25253a] px-3 py-2 text-[13px] text-[#e2e0ff] outline-none focus:border-violet-400/50" />
+                className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2 text-[13px] text-[#e2e8f0] outline-none focus:border-cyan-400/50" />
             </div>
           </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg border border-violet-500/20 px-4 py-2 text-[13px] text-[#9d9bbf] hover:bg-[#25253a]">キャンセル</button>
+          <button onClick={onClose} className="rounded-lg border border-cyan-500/20 px-4 py-2 text-[13px] text-[#94a3b8] hover:bg-[#1a1d26]">キャンセル</button>
           <button onClick={() => { if(form.title.trim()) onSave(form); }}
             className="rounded-lg bg-violet-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-violet-500">保存</button>
         </div>
@@ -462,29 +463,29 @@ function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnd, isDragging }
       onDragEnd={onDragEnd}
       onClick={() => onEdit(task)}
       className={`group relative cursor-pointer rounded-md border-l-[3px]
-        bg-[#1c1c2e] border border-violet-500/10
-        p-2 transition-all hover:border-violet-400/30 hover:bg-[#25253a]
+        bg-[#141720] border border-cyan-500/10
+        p-2 transition-all hover:border-violet-400/30 hover:bg-[#1a1d26]
         ${PRI[task.priority]?.ring || "border-l-slate-500"}
         ${isDragging ? "opacity-40 scale-95" : "opacity-100"}`}
     >
       <div className="flex items-start justify-between gap-1 mb-1">
-        <p className={`text-[12px] font-medium leading-snug flex-1 min-w-0 ${task.status === "Done" ? "line-through text-[#5e5c80]" : "text-[#e2e0ff]"}`}>
+        <p className={`text-[12px] font-medium leading-snug flex-1 min-w-0 ${task.status === "Done" ? "line-through text-[#475569]" : "text-[#e2e8f0]"}`}>
           {task.title}
         </p>
         <button onClick={e => { e.stopPropagation(); onDelete(task.id); }}
-          className="hidden shrink-0 rounded p-0.5 text-[#5e5c80] hover:bg-red-950/50 hover:text-red-400 group-hover:flex">
+          className="hidden shrink-0 rounded p-0.5 text-[#475569] hover:bg-red-950/50 hover:text-red-400 group-hover:flex">
           <Icon name="trash" size={11} />
         </button>
       </div>
       <div className="flex flex-wrap items-center gap-1">
         <span className={`rounded px-1 py-0.5 text-[9px] font-medium ${PRI[task.priority]?.badge || ""}`}>{PRI_LABEL[task.priority]||task.priority}</span>
         {task.dueDate && (
-          <span className={`flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] ${overdue ? "bg-red-950/60 text-red-300 border border-red-500/30" : "bg-[#25253a] text-[#9d9bbf] border border-violet-500/10"}`}>
+          <span className={`flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] ${overdue ? "bg-red-950/60 text-red-300 border border-red-500/30" : "bg-[#1a1d26] text-[#94a3b8] border border-cyan-500/10"}`}>
             <Icon name="calendar" size={9} />{task.dueDate}
           </span>
         )}
         {(task.estHours||task.actHours) ? (
-          <span className="flex items-center gap-0.5 rounded border border-violet-500/10 bg-[#25253a] px-1 py-0.5 text-[9px] text-[#9d9bbf]">
+          <span className="flex items-center gap-0.5 rounded border border-cyan-500/10 bg-[#1a1d26] px-1 py-0.5 text-[9px] text-[#94a3b8]">
             <Icon name="clock" size={9} />{task.actHours||0}/{task.estHours||0}h
           </span>
         ) : null}
@@ -552,7 +553,7 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
           >
             <div className="mb-2 flex items-center justify-between">
               <span className={`text-[13px] font-semibold ${col.header}`}>{STATUS_LABEL[st]||st}</span>
-              <span className="rounded-full bg-[#25253a] border border-violet-500/10 px-2 py-0.5 text-[11px] text-[#9d9bbf]">{colTasks.length}</span>
+              <span className="rounded-full bg-[#1a1d26] border border-cyan-500/10 px-2 py-0.5 text-[11px] text-[#94a3b8]">{colTasks.length}</span>
             </div>
             <div className="flex flex-col gap-1.5">
               {colTasks.map(t => {
@@ -560,8 +561,8 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
                 return (
                   <div key={t.id}
                     style={{
-                      borderTop: isOver && overInfo.pos==="before" ? "2px solid #7c6fcd" : "2px solid transparent",
-                      borderBottom: isOver && overInfo.pos==="after" ? "2px solid #7c6fcd" : "2px solid transparent",
+                      borderTop: isOver && overInfo.pos==="before" ? "2px solid #00b4d8" : "2px solid transparent",
+                      borderBottom: isOver && overInfo.pos==="after" ? "2px solid #00b4d8" : "2px solid transparent",
                     }}
                     onDragOver={e => handleCardDragOver(e, st, t.id)}
                     onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(o => o?.cardId===t.id ? null : o); }}
@@ -575,7 +576,7 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
                 );
               })}
               {overInfo && overInfo.col===st && !overInfo.cardId && (
-                <div style={{height:"2px", background:"#7c6fcd", borderRadius:"1px", margin:"2px 0"}} />
+                <div style={{height:"2px", background:"#00b4d8", borderRadius:"1px", margin:"2px 0"}} />
               )}
             </div>
           </div>
@@ -588,26 +589,26 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
 // ===== LIST VIEW =====
 function ListView({ tasks, onEdit, onDelete, onStatusChange }) {
   return (
-    <div className="rounded-xl border border-violet-500/15 bg-[#1c1c2e] overflow-hidden">
+    <div className="rounded-xl border border-cyan-500/15 bg-[#141720] overflow-hidden">
       <table className="w-full text-[13px]">
         <thead>
-          <tr className="border-b border-violet-500/15">
+          <tr className="border-b border-cyan-500/15">
             {["タイトル","ステータス","優先度","期日","見積","実績",""].map((h,i) => (
-              <th key={i} className="px-4 py-3 text-left text-[11px] font-medium text-[#9d9bbf]">{h}</th>
+              <th key={i} className="px-4 py-3 text-left text-[11px] font-medium text-[#94a3b8]">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {tasks.sort((a,b) => a.order - b.order).map(t => (
-            <tr key={t.id} className="border-b border-violet-500/10 hover:bg-[#25253a] cursor-pointer transition-colors" onClick={() => onEdit(t)}>
+            <tr key={t.id} className="border-b border-cyan-500/10 hover:bg-[#1a1d26] cursor-pointer transition-colors" onClick={() => onEdit(t)}>
               <td className="px-4 py-3">
-                <span className={`font-medium ${t.status==="Done" ? "line-through text-[#5e5c80]" : "text-[#e2e0ff]"}`}>{t.title}</span>
-                {t.description && <p className="text-[11px] text-[#5e5c80] mt-0.5 line-clamp-1">{t.description}</p>}
+                <span className={`font-medium ${t.status==="Done" ? "line-through text-[#475569]" : "text-[#e2e8f0]"}`}>{t.title}</span>
+                {t.description && <p className="text-[11px] text-[#475569] mt-0.5 line-clamp-1">{t.description}</p>}
               </td>
               <td className="px-4 py-3">
                 <select value={t.status} onClick={e => e.stopPropagation()}
                   onChange={e => onStatusChange(t.id, e.target.value)}
-                  className="rounded-lg border border-violet-500/20 bg-[#25253a] px-2 py-1 text-[11px] text-[#e2e0ff] outline-none focus:border-violet-400/50">
+                  className="rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-2 py-1 text-[11px] text-[#e2e8f0] outline-none focus:border-cyan-400/50">
                   {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABEL[s]||s}</option>)}
                 </select>
               </td>
@@ -616,14 +617,14 @@ function ListView({ tasks, onEdit, onDelete, onStatusChange }) {
               </td>
               <td className="px-4 py-3">
                 {t.dueDate ? (
-                  <span className={`text-[12px] ${new Date(t.dueDate)<new Date()&&t.status!=="Done" ? "text-red-400" : "text-[#9d9bbf]"}`}>{t.dueDate}</span>
-                ) : <span className="text-[#5e5c80]">—</span>}
+                  <span className={`text-[12px] ${new Date(t.dueDate)<new Date()&&t.status!=="Done" ? "text-red-400" : "text-[#94a3b8]"}`}>{t.dueDate}</span>
+                ) : <span className="text-[#475569]">—</span>}
               </td>
-              <td className="px-4 py-3 text-[#9d9bbf]">{t.estHours ? `${t.estHours}h` : "—"}</td>
-              <td className="px-4 py-3 text-[#9d9bbf]">{t.actHours ? `${t.actHours}h` : "—"}</td>
+              <td className="px-4 py-3 text-[#94a3b8]">{t.estHours ? `${t.estHours}h` : "—"}</td>
+              <td className="px-4 py-3 text-[#94a3b8]">{t.actHours ? `${t.actHours}h` : "—"}</td>
               <td className="px-4 py-3">
                 <button onClick={e => { e.stopPropagation(); onDelete(t.id); }}
-                  className="rounded p-1 text-[#5e5c80] hover:bg-red-950/50 hover:text-red-400">
+                  className="rounded p-1 text-[#475569] hover:bg-red-950/50 hover:text-red-400">
                   <Icon name="trash" size={14} />
                 </button>
               </td>
@@ -632,7 +633,7 @@ function ListView({ tasks, onEdit, onDelete, onStatusChange }) {
         </tbody>
       </table>
       {!tasks.length && (
-        <div className="py-10 text-center text-[#5e5c80] text-[13px]">
+        <div className="py-10 text-center text-[#475569] text-[13px]">
           <Icon name="inbox" size={32} className="mx-auto mb-2 opacity-40" />
           <p>タスクがありません</p>
         </div>
@@ -646,26 +647,28 @@ function Dashboard({ tasks }) {
   const total = tasks.length;
   const done = tasks.filter(t => t.status === "Done").length;
   const inProg = tasks.filter(t => t.status === "In Progress").length;
+  const waiting = tasks.filter(t => t.status === "Waiting").length;
   const highCount = tasks.filter(t => t.priority === "High" && t.status !== "Done").length;
   const estTotal = tasks.reduce((s,t) => s + (parseFloat(t.estHours)||0), 0);
   const actTotal = tasks.reduce((s,t) => s + (parseFloat(t.actHours)||0), 0);
   const overdue = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "Done");
 
   const metrics = [
-    { label:"合計タスク", value: total, icon:"list", color:"text-violet-300" },
+    { label:"合計タスク", value: total, icon:"list", color:"text-cyan-300" },
     { label:"完了", value: done, icon:"circle-check", color:"text-emerald-300" },
-    { label:"進行中", value: inProg, icon:"player-play", color:"text-amber-300" },
+    { label:"進行中", value: inProg, icon:"player-play", color:"text-cyan-300" },
+    { label:"返事待ち", value: waiting, icon:"clock-pause", color:"text-amber-300" },
     { label:"高優先度 (未完)", value: highCount, icon:"alert-triangle", color:"text-red-300" },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {metrics.map(m => (
-          <div key={m.label} className="rounded-xl border border-violet-500/10 bg-[#1c1c2e] p-4">
+          <div key={m.label} className="rounded-xl border border-cyan-500/10 bg-[#141720] p-4">
             <div className="flex items-center gap-2 mb-2">
               <Icon name={m.icon} size={16} className={m.color} />
-              <span className="text-[11px] text-[#9d9bbf]">{m.label}</span>
+              <span className="text-[11px] text-[#94a3b8]">{m.label}</span>
             </div>
             <div className={`text-2xl font-semibold ${m.color}`}>{m.value}</div>
           </div>
@@ -673,15 +676,15 @@ function Dashboard({ tasks }) {
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="rounded-xl border border-violet-500/10 bg-[#1c1c2e] p-4">
-          <div className="mb-3 text-[12px] font-medium text-[#9d9bbf] flex items-center gap-2">
+        <div className="rounded-xl border border-cyan-500/10 bg-[#141720] p-4">
+          <div className="mb-3 text-[12px] font-medium text-[#94a3b8] flex items-center gap-2">
             <Icon name="chart-bar" size={14} className="text-violet-400" /> 工数サマリー
           </div>
           <div className="space-y-2">
             {[["見積合計", estTotal], ["実績合計", actTotal], ["差異", actTotal - estTotal]].map(([l,v]) => (
               <div key={l} className="flex items-center justify-between">
-                <span className="text-[12px] text-[#9d9bbf]">{l}</span>
-                <span className={`text-[13px] font-medium ${l==="差異" ? (v>0?"text-red-300":"text-emerald-300") : "text-[#e2e0ff]"}`}>
+                <span className="text-[12px] text-[#94a3b8]">{l}</span>
+                <span className={`text-[13px] font-medium ${l==="差異" ? (v>0?"text-red-300":"text-emerald-300") : "text-[#e2e8f0]"}`}>
                   {v>0&&l==="差異"?"+":""}{v.toFixed(1)}h
                 </span>
               </div>
@@ -689,18 +692,18 @@ function Dashboard({ tasks }) {
           </div>
           {total > 0 && (
             <div className="mt-3">
-              <div className="flex justify-between text-[10px] text-[#5e5c80] mb-1">
+              <div className="flex justify-between text-[10px] text-[#475569] mb-1">
                 <span>完了率</span><span>{Math.round(done/total*100)}%</span>
               </div>
-              <div className="h-1.5 rounded-full bg-[#25253a]">
+              <div className="h-1.5 rounded-full bg-[#1a1d26]">
                 <div className="h-1.5 rounded-full bg-emerald-500 transition-all" style={{width:`${Math.round(done/total*100)}%`}} />
               </div>
             </div>
           )}
         </div>
 
-        <div className="rounded-xl border border-violet-500/10 bg-[#1c1c2e] p-4">
-          <div className="mb-3 text-[12px] font-medium text-[#9d9bbf] flex items-center gap-2">
+        <div className="rounded-xl border border-cyan-500/10 bg-[#141720] p-4">
+          <div className="mb-3 text-[12px] font-medium text-[#94a3b8] flex items-center gap-2">
             <Icon name="alert-triangle" size={14} className="text-red-400" /> 期限切れ・注意
           </div>
           {overdue.length === 0 ? (
@@ -815,24 +818,24 @@ function BackupModal({ tasks, onRestore, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-violet-500/20 bg-[#1c1c2e] p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl border border-cyan-500/20 bg-[#141720] p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-[#e2e0ff]">バックアップ / 復元</h2>
-          <button onClick={onClose} className="p-1.5 rounded text-[#9d9bbf] hover:text-[#e2e0ff] hover:bg-[#25253a]">
+          <h2 className="text-[15px] font-semibold text-[#e2e8f0]">バックアップ / 復元</h2>
+          <button onClick={onClose} className="p-1.5 rounded text-[#94a3b8] hover:text-[#e2e8f0] hover:bg-[#1a1d26]">
             <Icon name="x" size={16} />
           </button>
         </div>
 
-        <p className="text-[12px] text-[#9d9bbf]">
+        <p className="text-[12px] text-[#94a3b8]">
           {supabase ? "Supabaseの最新データをJSONで保存・復元します。" : "ローカルデータをJSONで保存・復元します。"}
         </p>
 
         {/* 現在のデータ件数 */}
-        <div className="rounded-xl border border-violet-500/10 bg-[#25253a] px-4 py-3 flex items-center gap-3">
+        <div className="rounded-xl border border-cyan-500/10 bg-[#1a1d26] px-4 py-3 flex items-center gap-3">
           <Icon name="database" size={16} className="text-violet-400 shrink-0" />
           <div>
-            <p className="text-[12px] font-medium text-[#e2e0ff]">現在のタスク数</p>
-            <p className="text-[11px] text-[#9d9bbf]">{tasks.length}件</p>
+            <p className="text-[12px] font-medium text-[#e2e8f0]">現在のタスク数</p>
+            <p className="text-[11px] text-[#94a3b8]">{tasks.length}件</p>
           </div>
           {supabase && (
             <span className="ml-auto text-[11px] text-emerald-400 flex items-center gap-1">
@@ -843,21 +846,21 @@ function BackupModal({ tasks, onRestore, onClose }) {
 
         {/* バックアップボタン */}
         <button onClick={handleExport} disabled={loading}
-          className="w-full flex items-center gap-3 rounded-xl border border-violet-500/15 bg-[#25253a] hover:bg-[#2d2b55] px-4 py-3 transition-colors text-left disabled:opacity-50">
+          className="w-full flex items-center gap-3 rounded-xl border border-cyan-500/15 bg-[#1a1d26] hover:bg-[#1e2535] px-4 py-3 transition-colors text-left disabled:opacity-50">
           <Icon name="download" size={18} className="text-emerald-400 shrink-0" />
           <div>
-            <p className="text-[13px] font-medium text-[#e2e0ff]">バックアップを保存</p>
-            <p className="text-[11px] text-[#9d9bbf]">taskboard_backup_{today()}.json</p>
+            <p className="text-[13px] font-medium text-[#e2e8f0]">バックアップを保存</p>
+            <p className="text-[11px] text-[#94a3b8]">taskboard_backup_{today()}.json</p>
           </div>
         </button>
 
         {/* 復元ボタン */}
         <button onClick={() => fileRef.current?.click()} disabled={loading}
-          className="w-full flex items-center gap-3 rounded-xl border border-violet-500/15 bg-[#25253a] hover:bg-[#2d2b55] px-4 py-3 transition-colors text-left disabled:opacity-50">
+          className="w-full flex items-center gap-3 rounded-xl border border-cyan-500/15 bg-[#1a1d26] hover:bg-[#1e2535] px-4 py-3 transition-colors text-left disabled:opacity-50">
           <Icon name="upload" size={18} className="text-amber-400 shrink-0" />
           <div>
-            <p className="text-[13px] font-medium text-[#e2e0ff]">バックアップから復元</p>
-            <p className="text-[11px] text-[#9d9bbf]">.json ファイルを選択</p>
+            <p className="text-[13px] font-medium text-[#e2e8f0]">バックアップから復元</p>
+            <p className="text-[11px] text-[#94a3b8]">.json ファイルを選択</p>
           </div>
         </button>
         <input ref={fileRef} type="file" accept=".json" onChange={handleFileSelect} className="hidden" />
@@ -874,7 +877,7 @@ function BackupModal({ tasks, onRestore, onClose }) {
             <p className="text-[11px] text-amber-300/70">※ 現在のデータはすべて上書きされます。</p>
             <div className="flex gap-2">
               <button onClick={() => { setConfirm(false); setPending(null); }}
-                className="flex-1 py-2 rounded-xl border border-violet-500/20 text-[12px] text-[#9d9bbf] hover:bg-[#25253a] transition-colors">キャンセル</button>
+                className="flex-1 py-2 rounded-xl border border-cyan-500/20 text-[12px] text-[#94a3b8] hover:bg-[#1a1d26] transition-colors">キャンセル</button>
               <button onClick={handleRestore}
                 className="flex-1 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-[12px] font-semibold text-white transition-colors">復元する</button>
             </div>
@@ -882,7 +885,7 @@ function BackupModal({ tasks, onRestore, onClose }) {
         )}
 
         {loading && (
-          <p className="text-[12px] text-[#9d9bbf] flex items-center gap-2">
+          <p className="text-[12px] text-[#94a3b8] flex items-center gap-2">
             <Icon name="refresh" size={12} className="animate-spin" /> 処理中...
           </p>
         )}
@@ -892,8 +895,8 @@ function BackupModal({ tasks, onRestore, onClose }) {
           </p>
         )}
 
-        <div className="rounded-xl border border-violet-500/10 bg-[#25253a]/60 p-3 text-[11px] text-[#5e5c80] space-y-1">
-          <p className="font-medium text-[#9d9bbf]">💡 推奨運用</p>
+        <div className="rounded-xl border border-cyan-500/10 bg-[#1a1d26]/60 p-3 text-[11px] text-[#475569] space-y-1">
+          <p className="font-medium text-[#94a3b8]">💡 推奨運用</p>
           <p>月1回バックアップを保存しておくと、誤削除やシステム障害時に復元できます。</p>
         </div>
       </div>
@@ -1075,26 +1078,26 @@ export default function App() {
 
   // ── ログイン確認中 / 未ログイン ───────────────────────────
   if (!authReady || user === undefined) {
-    return <div style={{minHeight:"100vh", background:"#13131f", display:"flex", alignItems:"center", justifyContent:"center"}}><div style={{width:32,height:32,borderRadius:"50%",border:"2.5px solid rgba(124,111,205,0.3)",borderTopColor:"#7c6fcd",animation:"spin 0.8s linear infinite"}} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+    return <div style={{minHeight:"100vh", background:"#0d0f12", display:"flex", alignItems:"center", justifyContent:"center"}}><div style={{width:32,height:32,borderRadius:"50%",border:"2.5px solid rgba(0,180,216,0.2)",borderTopColor:"#00b4d8",animation:"spin 0.8s linear infinite"}} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
   }
   if (!sbEnabled || user === null) {
     return <LoginScreen onLogin={u => setUser(u)} />;
   }
 
   return (
-    <div className="min-h-screen" style={{background:"#13131f", fontFamily:"'Noto Sans JP','Inter',system-ui,sans-serif"}}>
+    <div className="min-h-screen" style={{background:"#0d0f12", fontFamily:"'Noto Sans JP','Inter',system-ui,sans-serif"}}>
       {/* NAV */}
-      <nav style={{background:"#1c1c2e", borderBottom:"0.5px solid rgba(124,111,205,0.18)"}}
+      <nav style={{background:"#141720", borderBottom:"0.5px solid rgba(0,180,216,0.15)"}}
         className="sticky top-0 z-40 flex h-12 items-center px-5 gap-0">
         <span className="mr-5 text-[15px] font-semibold shrink-0" style={{fontFamily:"'Inter',sans-serif", letterSpacing:"-0.3px"}}>
-          Task<span style={{color:"#c4bef5"}}>Board</span>
+          Task<span style={{color:"#00b4d8"}}>Board</span>
         </span>
         {navItems.map(n => (
           <button key={n.id} onClick={() => setView(n.id)}
             className="flex h-12 items-center gap-1.5 px-3 text-[13px] transition-colors border-b-2"
             style={{
-              color: view===n.id ? "#c4bef5" : "#9d9bbf",
-              borderBottomColor: view===n.id ? "#7c6fcd" : "transparent",
+              color: view===n.id ? "#48cae4" : "#94a3b8",
+              borderBottomColor: view===n.id ? "#00b4d8" : "transparent",
               fontWeight: view===n.id ? 500 : 400,
               borderRadius: 0, background: "none",
               borderLeft:"none", borderRight:"none", borderTop:"none"
@@ -1105,7 +1108,7 @@ export default function App() {
         ))}
         <a href="/planner.html"
           className="flex h-12 items-center gap-1.5 px-3 text-[13px] border-b-2 ml-0"
-          style={{color:"#9d9bbf", borderBottomColor:"transparent", borderRadius:0}}>
+          style={{color:"#94a3b8", borderBottomColor:"transparent", borderRadius:0}}>
           <Icon name="calendar-event" size={15} />
           <span className="hidden sm:inline">Day Planner</span>
         </a>
@@ -1113,23 +1116,23 @@ export default function App() {
           {/* 同期ステータス表示 */}
           <SyncIndicator syncing={syncing} syncError={syncError} />
           {/* ユーザー情報 */}
-          <span className="hidden sm:inline text-[11px]" style={{color:"#6b6b8e", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{user?.email}</span>
+          <span className="hidden sm:inline text-[11px]" style={{color:"#475569", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{user?.email}</span>
           {/* バックアップボタン */}
           <button onClick={() => setShowBackup(true)}
             className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] transition-colors"
-            style={{background:"#25253a", border:"0.5px solid rgba(124,111,205,0.2)", color:"#9d9bbf"}}>
+            style={{background:"#1a1d26", border:"0.5px solid rgba(0,180,216,0.20)", color:"#94a3b8"}}>
             <Icon name="database-export" size={14} /> バックアップ
           </button>
           {/* ログアウト */}
           <button onClick={handleSignOut}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] transition-colors"
-            style={{background:"#25253a", border:"0.5px solid rgba(124,111,205,0.2)", color:"#9d9bbf"}}
+            style={{background:"#1a1d26", border:"0.5px solid rgba(0,180,216,0.20)", color:"#94a3b8"}}
             title="ログアウト">
             <Icon name="logout" size={14} /><span className="hidden sm:inline">ログアウト</span>
           </button>
           <button onClick={() => setModal({})}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-white"
-            style={{background:"#7c6fcd"}}>
+            style={{background:"#00b4d8"}}>
             <Icon name="plus" size={14} /> タスクを追加
           </button>
         </div>
@@ -1137,19 +1140,19 @@ export default function App() {
 
       {/* FILTERS */}
       {view !== "dashboard" && (
-        <div className="px-5 py-3 flex flex-wrap items-center gap-2" style={{borderBottom:"0.5px solid rgba(124,111,205,0.12)"}}>
+        <div className="px-5 py-3 flex flex-wrap items-center gap-2" style={{borderBottom:"0.5px solid rgba(0,180,216,0.10)"}}>
           <div className="relative flex-1 min-w-[160px] max-w-xs">
-            <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{color:"#5e5c80"}} />
+            <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{color:"#475569"}} />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="検索…"
               className="w-full rounded-lg pl-8 pr-3 py-1.5 text-[13px] outline-none"
-              style={{background:"#25253a", border:"0.5px solid rgba(124,111,205,0.2)", color:"#e2e0ff"}} />
+              style={{background:"#1a1d26", border:"0.5px solid rgba(0,180,216,0.20)", color:"#e2e8f0"}} />
           </div>
           {[["",  "すべて"], ...STATUSES.map(s=>[s,STATUS_LABEL[s]||s])].map(([v,l]) => (
             <button key={v+l} onClick={() => setFilterStatus(v)}
               className="rounded-lg px-3 py-1.5 text-[12px] transition-colors"
               style={{
-                background: filterStatus===v ? "#2d2b55" : "#25253a",
-                color: filterStatus===v ? "#c4bef5" : "#9d9bbf",
+                background: filterStatus===v ? "#002a36" : "#1a1d26",
+                color: filterStatus===v ? "#48cae4" : "#94a3b8",
                 border: `0.5px solid ${filterStatus===v ? "rgba(124,111,205,0.4)" : "rgba(124,111,205,0.15)"}`,
               }}>{l}</button>
           ))}
@@ -1158,13 +1161,13 @@ export default function App() {
             <button key={v+l} onClick={() => setFilterPri(v)}
               className="rounded-lg px-3 py-1.5 text-[12px] transition-colors"
               style={{
-                background: filterPri===v ? "#2d2b55" : "#25253a",
-                color: filterPri===v ? "#c4bef5" : "#9d9bbf",
+                background: filterPri===v ? "#002a36" : "#1a1d26",
+                color: filterPri===v ? "#48cae4" : "#94a3b8",
                 border: `0.5px solid ${filterPri===v ? "rgba(124,111,205,0.4)" : "rgba(124,111,205,0.15)"}`,
               }}>{l}</button>
           ))}
           <div className="w-px h-5" style={{background:"rgba(124,111,205,0.15)"}} />
-          <span style={{fontSize:"11px",color:"#5e5c80",flexShrink:0}}>並び替え:</span>
+          <span style={{fontSize:"11px",color:"#475569",flexShrink:0}}>並び替え:</span>
           {[
             {key:"priority", label:"優先度"},
             {key:"title",    label:"名前"},
@@ -1174,15 +1177,15 @@ export default function App() {
             <button key={key} onClick={() => toggleSort(key)}
               className="rounded-lg px-2.5 py-1.5 text-[12px] transition-colors flex items-center gap-1"
               style={{
-                background: sortKey===key ? "#2d2b55" : "#25253a",
-                color: sortKey===key ? "#c4bef5" : "#9d9bbf",
+                background: sortKey===key ? "#002a36" : "#1a1d26",
+                color: sortKey===key ? "#48cae4" : "#94a3b8",
                 border: `0.5px solid ${sortKey===key ? "rgba(124,111,205,0.4)" : "rgba(124,111,205,0.15)"}`,
               }}>
               {label}
               {sortKey===key && <Icon name={sortDir==="asc"?"arrow-up":"arrow-down"} size={11} />}
             </button>
           ))}
-          <span className="ml-auto text-[11px]" style={{color:"#5e5c80"}}>{filtered.length}件</span>
+          <span className="ml-auto text-[11px]" style={{color:"#475569"}}>{filtered.length}件</span>
         </div>
       )}
 
