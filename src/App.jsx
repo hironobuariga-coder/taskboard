@@ -539,16 +539,15 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
     setOverInfo(null); setDraggingId(null);
   };
 
-  // 1ステータスの列パネル（ヘッダー＋ドロップゾーン）をレンダリング
-  // カード列（ヘッダーなし・ドロップ受付）
-  const renderCardCol = (st, taskList, isMain) => {
+  // カード列（全列ドロップ受付）
+  const renderCardCol = (st, taskList) => {
     const col = STA[st];
     return (
       <div
         className={`rounded-xl border ${col.accent} ${col.bg} p-2 flex flex-col gap-1.5 min-h-[80px]`}
-        onDragOver={e => isMain && handleColDragOver(e, st)}
+        onDragOver={e => handleColDragOver(e, st)}
         onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(null); }}
-        onDrop={e => isMain && handleDrop(e, st, null)}
+        onDrop={e => handleDrop(e, st, null)}
       >
         {taskList.map(t => {
           const isOver = overInfo && overInfo.cardId === t.id && draggingId !== t.id;
@@ -569,12 +568,12 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
             </div>
           );
         })}
-        {overInfo && overInfo.col===st && !overInfo.cardId && isMain && (
+        {overInfo && overInfo.col===st && !overInfo.cardId && (
           <div style={{height:"2px", background:"#00b4d8", borderRadius:"1px", margin:"2px 0"}} />
         )}
       </div>
     );
-  };
+  }
 
   // グループヘッダー（span列分の幅）
   const GroupHeader = ({ st, span }) => {
@@ -607,12 +606,12 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
         <GroupHeader st="Waiting"     span={1} />
         <GroupHeader st="Done"        span={1} />
         {/* カード行 */}
-        {renderCardCol("Todo",        todoLeft,  true)}
-        {renderCardCol("Todo",        todoRight, false)}
-        {renderCardCol("In Progress", ipLeft,    true)}
-        {renderCardCol("In Progress", ipRight,   false)}
-        {renderCardCol("Waiting",     waitTasks, true)}
-        {renderCardCol("Done",        doneTasks, true)}
+        {renderCardCol("Todo",        todoLeft)}
+        {renderCardCol("Todo",        todoRight)}
+        {renderCardCol("In Progress", ipLeft)}
+        {renderCardCol("In Progress", ipRight)}
+        {renderCardCol("Waiting",     waitTasks)}
+        {renderCardCol("Done",        doneTasks)}
       </div>
     );
   };
@@ -627,7 +626,7 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
           <span className={`text-[12px] font-semibold ${col.header}`}>{STATUS_LABEL[st]}</span>
           <span className="rounded-full bg-[#1a1d26] border border-cyan-500/10 px-1.5 py-0.5 text-[10px] text-[#94a3b8]">{colTasks.length}</span>
         </div>
-        {renderCardCol(st, colTasks, true)}
+        {renderCardCol(st, colTasks)}
       </div>
     );
   };
