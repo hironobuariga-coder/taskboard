@@ -594,10 +594,24 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
     const ipTasks   = sortTasks(tasks.filter(t => t.status === "In Progress"));
     const waitTasks = sortTasks(tasks.filter(t => t.status === "Waiting"));
     const doneTasks = sortTasks(tasks.filter(t => t.status === "Done"));
-    const todoLeft  = todoTasks.filter((_,i) => i%2===0);
-    const todoRight = todoTasks.filter((_,i) => i%2===1);
-    const ipLeft    = ipTasks.filter((_,i) => i%2===0);
-    const ipRight   = ipTasks.filter((_,i) => i%2===1);
+
+    // 15件ごとに列を分割するヘルパー
+    const splitCols = (arr, perCol = 15) => {
+      const cols = [];
+      for (let i = 0; i < arr.length; i += perCol) {
+        cols.push(arr.slice(i, i + perCol));
+      }
+      return cols.length ? cols : [[]]; // 空でも最低1列
+    };
+
+    const todoCols = splitCols(todoTasks);
+    const ipCols   = splitCols(ipTasks);
+
+    // 実際に使う列数（最大2列）
+    const todoColCount = Math.min(todoCols.length, 2);
+    const ipColCount   = Math.min(ipCols.length,   2);
+
+    // グリッドは常に6列固定（未着手2+進行中2+返事待ち1+完了1）
     return (
       <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr", gap:"8px", alignItems:"start"}}>
         {/* ヘッダー行 */}
@@ -605,13 +619,18 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
         <GroupHeader st="In Progress" span={2} />
         <GroupHeader st="Waiting"     span={1} />
         <GroupHeader st="Done"        span={1} />
-        {/* カード行 */}
-        {renderCardCol("Todo",        todoLeft)}
-        {renderCardCol("Todo",        todoRight)}
-        {renderCardCol("In Progress", ipLeft)}
-        {renderCardCol("In Progress", ipRight)}
-        {renderCardCol("Waiting",     waitTasks)}
-        {renderCardCol("Done",        doneTasks)}
+        {/* 未着手：1列目 */}
+        {renderCardCol("Todo", todoCols[0] || [])}
+        {/* 未着手：2列目（15件超えたら続き、なければ空列） */}
+        {renderCardCol("Todo", todoCols[1] || [])}
+        {/* 進行中：1列目 */}
+        {renderCardCol("In Progress", ipCols[0] || [])}
+        {/* 進行中：2列目（15件超えたら続き、なければ空列） */}
+        {renderCardCol("In Progress", ipCols[1] || [])}
+        {/* 返事待ち */}
+        {renderCardCol("Waiting", waitTasks)}
+        {/* 完了 */}
+        {renderCardCol("Done", doneTasks)}
       </div>
     );
   };
