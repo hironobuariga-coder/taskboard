@@ -540,83 +540,23 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
   };
 
   // 1ステータスの列パネル（ヘッダー＋ドロップゾーン）をレンダリング
-  const renderLane = (st, label) => {
+  // カード列（ヘッダーなし・ドロップ受付）
+  const renderCardCol = (st, taskList, isMain) => {
     const col = STA[st];
-    const colTasks = sortTasks(tasks.filter(t => t.status === st));
     return (
       <div
-        className={`rounded-xl border ${col.accent} ${col.bg} p-2.5 flex flex-col gap-1.5 min-h-[120px]`}
-        onDragOver={e => handleColDragOver(e, st)}
+        className={`rounded-xl border ${col.accent} ${col.bg} p-2 flex flex-col gap-1.5 min-h-[80px]`}
+        onDragOver={e => isMain && handleColDragOver(e, st)}
         onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(null); }}
-        onDrop={e => handleDrop(e, st, null)}
+        onDrop={e => isMain && handleDrop(e, st, null)}
       >
-        {/* 列ヘッダー */}
-        <div className="flex items-center justify-between mb-1 px-0.5">
-          <span className={`text-[12px] font-semibold ${col.header}`}>{label || STATUS_LABEL[st] || st}</span>
-          <span className="rounded-full bg-[#1a1d26] border border-cyan-500/10 px-1.5 py-0.5 text-[10px] text-[#94a3b8]">{colTasks.length}</span>
-        </div>
-        {/* タスクカード */}
-        {colTasks.map(t => {
-          const isOver = overInfo && overInfo.cardId === t.id && draggingId !== t.id;
-          return (
-            <div key={t.id}
-              style={{
-                borderTop: isOver && overInfo.pos==="before" ? "2px solid #00b4d8" : "2px solid transparent",
-                borderBottom: isOver && overInfo.pos==="after" ? "2px solid #00b4d8" : "2px solid transparent",
-              }}
-              onDragOver={e => handleCardDragOver(e, st, t.id)}
-              onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(o => o?.cardId===t.id ? null : o); }}
-              onDrop={e => handleDrop(e, st, t.id)}
-            >
-              <TaskCard task={t} onEdit={onEdit} onDelete={onDelete}
-                onDragStart={id => setDraggingId(id)}
-                onDragEnd={() => { setDraggingId(null); setOverInfo(null); }}
-                isDragging={draggingId === t.id} />
-            </div>
-          );
-        })}
-        {overInfo && overInfo.col===st && !overInfo.cardId && (
-          <div style={{height:"2px", background:"#00b4d8", borderRadius:"1px", margin:"2px 0"}} />
-        )}
-      </div>
-    );
-  };
-
-  // 未着手・進行中のタスクを奇数・偶数で2列に分割
-  const splitTwo = (st) => {
-    const colTasks = sortTasks(tasks.filter(t => t.status === st));
-    const left  = colTasks.filter((_, i) => i % 2 === 0);
-    const right = colTasks.filter((_, i) => i % 2 === 1);
-    return { left, right };
-  };
-
-  // 分割されたタスク群をレンダリング（ヘッダーは左列のみ表示）
-  const renderSplitLane = (st, labelLeft, labelRight) => {
-    const col = STA[st];
-    const allTasks = sortTasks(tasks.filter(t => t.status === st));
-    const leftTasks  = allTasks.filter((_, i) => i % 2 === 0);
-    const rightTasks = allTasks.filter((_, i) => i % 2 === 1);
-
-    const laneStyle = `rounded-xl border ${col.accent} ${col.bg} p-2.5 flex flex-col gap-1.5 min-h-[120px]`;
-
-    const renderCards = (taskList, laneLabel, isDropTarget) => (
-      <div
-        className={laneStyle}
-        onDragOver={e => isDropTarget && handleColDragOver(e, st)}
-        onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(null); }}
-        onDrop={e => isDropTarget && handleDrop(e, st, null)}
-      >
-        <div className="flex items-center justify-between mb-1 px-0.5">
-          <span className={`text-[12px] font-semibold ${col.header}`}>{laneLabel}</span>
-          <span className="rounded-full bg-[#1a1d26] border border-cyan-500/10 px-1.5 py-0.5 text-[10px] text-[#94a3b8]">{taskList.length}</span>
-        </div>
         {taskList.map(t => {
           const isOver = overInfo && overInfo.cardId === t.id && draggingId !== t.id;
           return (
             <div key={t.id}
               style={{
-                borderTop: isOver && overInfo.pos==="before" ? "2px solid #00b4d8" : "2px solid transparent",
-                borderBottom: isOver && overInfo.pos==="after" ? "2px solid #00b4d8" : "2px solid transparent",
+                borderTop:    isOver && overInfo.pos==="before" ? "2px solid #00b4d8" : "2px solid transparent",
+                borderBottom: isOver && overInfo.pos==="after"  ? "2px solid #00b4d8" : "2px solid transparent",
               }}
               onDragOver={e => handleCardDragOver(e, st, t.id)}
               onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(o => o?.cardId===t.id ? null : o); }}
@@ -629,52 +569,91 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
             </div>
           );
         })}
-        {overInfo && overInfo.col===st && !overInfo.cardId && isDropTarget && (
+        {overInfo && overInfo.col===st && !overInfo.cardId && isMain && (
           <div style={{height:"2px", background:"#00b4d8", borderRadius:"1px", margin:"2px 0"}} />
         )}
       </div>
     );
+  };
 
+  // グループヘッダー（span列分の幅）
+  const GroupHeader = ({ st, span }) => {
+    const col = STA[st];
+    const count = tasks.filter(t => t.status === st).length;
     return (
-      <>
-        {renderCards(leftTasks,  labelLeft,  true)}
-        {renderCards(rightTasks, labelRight, false)}
-      </>
+      <div style={{gridColumn:`span ${span}`}}
+        className={`flex items-center gap-2 px-1 pb-1 border-b ${col.accent}`}>
+        <span className={`text-[12px] font-semibold tracking-wide ${col.header}`}>{STATUS_LABEL[st]}</span>
+        <span className="rounded-full bg-[#1a1d26] border border-cyan-500/10 px-1.5 py-0.5 text-[10px] text-[#94a3b8]">{count}</span>
+      </div>
+    );
+  };
+
+  // PC用 6列グリッド
+  const renderPCLayout = () => {
+    const todoTasks = sortTasks(tasks.filter(t => t.status === "Todo"));
+    const ipTasks   = sortTasks(tasks.filter(t => t.status === "In Progress"));
+    const waitTasks = sortTasks(tasks.filter(t => t.status === "Waiting"));
+    const doneTasks = sortTasks(tasks.filter(t => t.status === "Done"));
+    const todoLeft  = todoTasks.filter((_,i) => i%2===0);
+    const todoRight = todoTasks.filter((_,i) => i%2===1);
+    const ipLeft    = ipTasks.filter((_,i) => i%2===0);
+    const ipRight   = ipTasks.filter((_,i) => i%2===1);
+    return (
+      <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr", gap:"8px", alignItems:"start"}}>
+        {/* ヘッダー行 */}
+        <GroupHeader st="Todo"        span={2} />
+        <GroupHeader st="In Progress" span={2} />
+        <GroupHeader st="Waiting"     span={1} />
+        <GroupHeader st="Done"        span={1} />
+        {/* カード行 */}
+        {renderCardCol("Todo",        todoLeft,  true)}
+        {renderCardCol("Todo",        todoRight, false)}
+        {renderCardCol("In Progress", ipLeft,    true)}
+        {renderCardCol("In Progress", ipRight,   false)}
+        {renderCardCol("Waiting",     waitTasks, true)}
+        {renderCardCol("Done",        doneTasks, true)}
+      </div>
+    );
+  };
+
+  // タブレット・スマホ用 シンプル縦積みレーン
+  const renderSimpleLane = (st) => {
+    const col = STA[st];
+    const colTasks = sortTasks(tasks.filter(t => t.status === st));
+    return (
+      <div key={st}>
+        <div className={`flex items-center gap-2 px-1 pb-1 mb-1.5 border-b ${col.accent}`}>
+          <span className={`text-[12px] font-semibold ${col.header}`}>{STATUS_LABEL[st]}</span>
+          <span className="rounded-full bg-[#1a1d26] border border-cyan-500/10 px-1.5 py-0.5 text-[10px] text-[#94a3b8]">{colTasks.length}</span>
+        </div>
+        {renderCardCol(st, colTasks, true)}
+      </div>
     );
   };
 
   return (
     <>
-      {/*
-        PC（lg以上）: 6列グリッド
-          列1: 未着手-A  列2: 未着手-B  列3: 進行中-A  列4: 進行中-B  列5: 返事待ち  列6: 完了
-        タブレット（md）: 3列 → 未着手/進行中/返事待ち+完了
-        スマホ（sm以下）: 1列縦積み
-      */}
-      {/* PC: 6列 */}
-      <div className="hidden lg:grid gap-2.5" style={{gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr"}}>
-        {renderSplitLane("Todo",        "未着手 (1)",  "未着手 (2)")}
-        {renderSplitLane("In Progress", "進行中 (1)",  "進行中 (2)")}
-        {renderLane("Waiting")}
-        {renderLane("Done")}
+      {/* PC: 6列グループ表示 */}
+      <div className="hidden lg:block">
+        {renderPCLayout()}
       </div>
       {/* タブレット: 2列 */}
       <div className="hidden md:grid lg:hidden gap-3" style={{gridTemplateColumns:"1fr 1fr"}}>
-        {renderLane("Todo")}
-        {renderLane("In Progress")}
-        {renderLane("Waiting")}
-        {renderLane("Done")}
+        {renderSimpleLane("Todo")}
+        {renderSimpleLane("In Progress")}
+        {renderSimpleLane("Waiting")}
+        {renderSimpleLane("Done")}
       </div>
       {/* スマホ: 1列縦積み */}
-      <div className="grid md:hidden gap-3" style={{gridTemplateColumns:"1fr"}}>
-        {renderLane("Todo")}
-        {renderLane("In Progress")}
-        {renderLane("Waiting")}
-        {renderLane("Done")}
+      <div className="grid md:hidden gap-4">
+        {renderSimpleLane("Todo")}
+        {renderSimpleLane("In Progress")}
+        {renderSimpleLane("Waiting")}
+        {renderSimpleLane("Done")}
       </div>
     </>
   );
-}
 
 // ===== LIST VIEW =====
 function ListView({ tasks, onEdit, onDelete, onStatusChange }) {
