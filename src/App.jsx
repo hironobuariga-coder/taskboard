@@ -633,8 +633,8 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
   };
 
   // useWindowWidthでブレークポイントをJS側で判定
-  const [winW, setWinW] = React.useState(() => typeof window !== "undefined" ? window.innerWidth : 1200);
-  React.useEffect(() => {
+  const [winW, setWinW] = useState(() => typeof window !== "undefined" ? window.innerWidth : 1200);
+  useEffect(() => {
     const onResize = () => setWinW(window.innerWidth);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
