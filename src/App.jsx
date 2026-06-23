@@ -632,26 +632,32 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
     );
   };
 
+  // useWindowWidthでブレークポイントをJS側で判定
+  const [winW, setWinW] = React.useState(() => typeof window !== "undefined" ? window.innerWidth : 1200);
+  React.useEffect(() => {
+    const onResize = () => setWinW(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   return (
     <>
-      {/* PC: 6列グループ表示 */}
-      <div className="hidden lg:block">
-        {renderPCLayout()}
-      </div>
-      {/* タブレット: 2列 */}
-      <div className="hidden md:grid lg:hidden gap-3" style={{gridTemplateColumns:"1fr 1fr"}}>
-        {renderSimpleLane("Todo")}
-        {renderSimpleLane("In Progress")}
-        {renderSimpleLane("Waiting")}
-        {renderSimpleLane("Done")}
-      </div>
-      {/* スマホ: 1列縦積み */}
-      <div className="grid md:hidden gap-4">
-        {renderSimpleLane("Todo")}
-        {renderSimpleLane("In Progress")}
-        {renderSimpleLane("Waiting")}
-        {renderSimpleLane("Done")}
-      </div>
+      {winW >= 1024
+        ? renderPCLayout()
+        : winW >= 768
+          ? <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px"}}>
+              {renderSimpleLane("Todo")}
+              {renderSimpleLane("In Progress")}
+              {renderSimpleLane("Waiting")}
+              {renderSimpleLane("Done")}
+            </div>
+          : <div style={{display:"grid", gridTemplateColumns:"1fr", gap:"16px"}}>
+              {renderSimpleLane("Todo")}
+              {renderSimpleLane("In Progress")}
+              {renderSimpleLane("Waiting")}
+              {renderSimpleLane("Done")}
+            </div>
+      }
     </>
   );
 
