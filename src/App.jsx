@@ -1011,6 +1011,11 @@ export default function App() {
   const [syncError, setSyncError] = useState(null);
   const [showBackup, setShowBackup] = useState(false);
 
+  // ── Undo（削除取り消し）──
+  const [undoTask,    setUndoTask]    = useState(null);  // 直前に削除したタスク
+  const [undoVisible, setUndoVisible] = useState(false); // トースト表示中
+  const undoTimerRef = useRef(null);
+
   const [view,         setView]         = useState("kanban");
   const [modal,        setModal]        = useState(null);
   const [search,       setSearch]       = useState("");
@@ -1094,8 +1099,32 @@ export default function App() {
   };
 
   const del = id => {
+    const target = tasks.find(t => t.id === id);
+    if (!target) return;
+    // 削除実行
     setTasks(ts => ts.filter(t => t.id !== id));
     delFromSupabase(id);
+    // Undoスタックに積む
+    setUndoTask(target);
+    setUndoVisible(true);
+    // 既存タイマーをリセット
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(() => {
+      setUndoVisible(false);
+      setUndoTask(null);
+    }, 6000); // 6秒以内なら元に戻せる
+  };
+
+  const handleUndo = () => {
+    if (!undoTask) return;
+    // タスクを復元
+    setTasks(ts => [...ts, { ...undoTask, updatedAt: Date.now() }]);
+    if (supabase && sbEnabled) {
+      supabase.from("tasks").upsert(toDbTask({ ...undoTask, updatedAt: Date.now() }));
+    }
+    setUndoVisible(false);
+    setUndoTask(null);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
   };
 
   const move = (id, status, targetId, pos) => {
@@ -1285,6 +1314,34 @@ export default function App() {
       )}
       {/* 付箋パネル */}
       <StickyPanel user={user} />
+
+      {/* 削除Undoトースト */}
+      {undoVisible && undoTask && (
+        <div style={{
+          position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)",
+          background:"#1a1d26", border:"0.5px solid rgba(0,180,216,0.35)",
+          borderRadius:10, padding:"10px 16px",
+          display:"flex", alignItems:"center", gap:12,
+          boxShadow:"0 4px 24px rgba(0,0,0,0.5)",
+          zIndex:2000, whiteSpace:"nowrap",
+          animation:"slideUp 0.2s ease",
+        }}>
+          <i className="ti ti-trash" style={{fontSize:15, color:"#f87171"}} />
+          <span style={{fontSize:13, color:"#e2e8f0"}}>
+            「{undoTask.title.length > 20 ? undoTask.title.slice(0,20)+"…" : undoTask.title}」を削除しました
+          </span>
+          <button onClick={handleUndo} style={{
+            padding:"4px 14px", borderRadius:6,
+            background:"rgba(0,180,216,0.15)", border:"0.5px solid rgba(0,180,216,0.4)",
+            color:"#48cae4", fontSize:12, fontWeight:500, cursor:"pointer",
+            transition:"background 0.12s",
+          }}>元に戻す</button>
+          <button onClick={() => { setUndoVisible(false); setUndoTask(null); }} style={{
+            background:"none", border:"none", color:"#475569", cursor:"pointer", fontSize:16, lineHeight:1,
+          }}>×</button>
+        </div>
+      )}
+      <style>{`@keyframes slideUp { from { opacity:0; transform:translateX(-50%) translateY(12px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
     </div>
   );
 }
