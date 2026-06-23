@@ -660,6 +660,7 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
       }
     </>
   );
+}
 
 // ===== LIST VIEW =====
 function ListView({ tasks, onEdit, onDelete, onStatusChange }) {
