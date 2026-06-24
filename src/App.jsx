@@ -595,23 +595,13 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
     const waitTasks = sortTasks(tasks.filter(t => t.status === "Waiting"));
     const doneTasks = sortTasks(tasks.filter(t => t.status === "Done"));
 
-    // 15件ごとに列を分割するヘルパー
-    const splitCols = (arr, perCol = 15) => {
-      const cols = [];
-      for (let i = 0; i < arr.length; i += perCol) {
-        cols.push(arr.slice(i, i + perCol));
-      }
-      return cols.length ? cols : [[]]; // 空でも最低1列
-    };
+    // 1列あたり最大10件、2列目は残り全件（20件超えは2列目が伸びる）
+    const PER_COL = 10;
+    const splitCols = (arr) => [arr.slice(0, PER_COL), arr.slice(PER_COL)];
 
-    const todoCols = splitCols(todoTasks);
-    const ipCols   = splitCols(ipTasks);
+    const [todoCol1, todoCol2] = splitCols(todoTasks);
+    const [ipCol1,   ipCol2]   = splitCols(ipTasks);
 
-    // 実際に使う列数（最大2列）
-    const todoColCount = Math.min(todoCols.length, 2);
-    const ipColCount   = Math.min(ipCols.length,   2);
-
-    // グリッドは常に6列固定（未着手2+進行中2+返事待ち1+完了1）
     return (
       <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr", gap:"8px", alignItems:"start"}}>
         {/* ヘッダー行 */}
@@ -619,18 +609,15 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
         <GroupHeader st="In Progress" span={2} />
         <GroupHeader st="Waiting"     span={1} />
         <GroupHeader st="Done"        span={1} />
-        {/* 未着手：1列目 */}
-        {renderCardCol("Todo", todoCols[0] || [])}
-        {/* 未着手：2列目（15件超えたら続き、なければ空列） */}
-        {renderCardCol("Todo", todoCols[1] || [])}
-        {/* 進行中：1列目 */}
-        {renderCardCol("In Progress", ipCols[0] || [])}
-        {/* 進行中：2列目（15件超えたら続き、なければ空列） */}
-        {renderCardCol("In Progress", ipCols[1] || [])}
-        {/* 返事待ち */}
+        {/* 未着手：1列目（1〜10件）/ 2列目（11件〜、20超えは下に伸びる） */}
+        {renderCardCol("Todo", todoCol1)}
+        {renderCardCol("Todo", todoCol2)}
+        {/* 進行中：1列目（1〜10件）/ 2列目（11件〜、20超えは下に伸びる） */}
+        {renderCardCol("In Progress", ipCol1)}
+        {renderCardCol("In Progress", ipCol2)}
+        {/* 返事待ち・完了 */}
         {renderCardCol("Waiting", waitTasks)}
-        {/* 完了 */}
-        {renderCardCol("Done", doneTasks)}
+        {renderCardCol("Done",    doneTasks)}
       </div>
     );
   };
