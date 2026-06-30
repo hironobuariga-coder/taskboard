@@ -10,6 +10,161 @@ import { supabase, sbEnabled, getSession, signIn, signUp, signOut, onAuthChange 
 // font:    Noto Sans JP + Inter
 // icons:   Tabler outline
 
+// ===== 共有設定（taskboard & planner 共通） =====
+const SHARED_SETTINGS_KEY = "shared-settings";
+
+const THEMES = [
+  { id:"purple-dark", name:"パープル",     bg:"#1c1c2e", bg2:"#25253a", ac:"#7c6fcd" },
+  { id:"cyan-dark",   name:"シアン",       bg:"#141720", bg2:"#1a1f2e", ac:"#00b4d8" },
+  { id:"forest-dark", name:"フォレスト",   bg:"#141f18", bg2:"#1c2e22", ac:"#2DC864" },
+  { id:"amber-dark",  name:"アンバー",     bg:"#1e1a10", bg2:"#2a2415", ac:"#E6A028" },
+  { id:"light",       name:"ライト",       bg:"#f5f4f2", bg2:"#ffffff", ac:"#5b52c8" },
+  { id:"light-blue",  name:"ライトブルー", bg:"#f0f5fa", bg2:"#ffffff", ac:"#1a6ccc" },
+];
+
+const FEATURE_DEFS = [
+  { key:"showPlanner",   label:"Day Planner ページ",  icon:"calendar-event", default:true },
+  { key:"showTimer",     label:"タイマー ページ",      icon:"clock",          default:true },
+  { key:"showLog",       label:"実績ログ ページ",      icon:"notebook",       default:true },
+  { key:"showDashboard", label:"ダッシュボード",        icon:"chart-bar",      default:true },
+  { key:"showSticky",    label:"付箋パネル",            icon:"note",           default:true },
+  { key:"showBackupBtn", label:"バックアップボタン",    icon:"database-export",default:true },
+];
+
+function loadSharedSettings() {
+  try {
+    const s = localStorage.getItem(SHARED_SETTINGS_KEY);
+    return s ? JSON.parse(s) : {};
+  } catch { return {}; }
+}
+
+function saveSharedSettings(obj) {
+  try { localStorage.setItem(SHARED_SETTINGS_KEY, JSON.stringify(obj)); } catch {}
+}
+
+function applyThemeToDocument(themeId) {
+  document.documentElement.setAttribute("data-theme", themeId || "cyan-dark");
+}
+
+// ===== 共有設定モーダル =====
+function SharedSettingsModal({ onClose }) {
+  const [settings, setSettings] = useState(() => loadSharedSettings());
+  const themeId = settings.theme || "cyan-dark";
+
+  function setTheme(id) {
+    const next = { ...settings, theme: id };
+    setSettings(next);
+    applyThemeToDocument(id);
+  }
+
+  function toggleFeature(key) {
+    const next = { ...settings, [key]: settings[key] === false ? true : false };
+    setSettings(next);
+  }
+
+  function handleSave() {
+    saveSharedSettings(settings);
+    onClose();
+  }
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, background:"rgba(0,0,0,0.55)",
+      zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem"
+    }}>
+      <div style={{
+        background:"#1a1d26", border:"0.5px solid rgba(0,180,216,0.25)",
+        borderRadius:12, width:460, maxWidth:"96vw", maxHeight:"90vh",
+        overflow:"auto", padding:"1.5rem"
+      }}>
+        {/* ヘッダー */}
+        <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.25rem"}}>
+          <span style={{fontSize:15, fontWeight:500, color:"#e2f0ff", display:"flex", alignItems:"center", gap:8}}>
+            <Icon name="settings" size={16} style={{color:"#00b4d8"}} />
+            アプリ設定
+          </span>
+          <button onClick={onClose}
+            style={{background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:18, lineHeight:1}}>×</button>
+        </div>
+
+        {/* テーマ */}
+        <div style={{fontSize:12, fontWeight:500, color:"#8aa4c0", marginBottom:8, display:"flex", alignItems:"center", gap:6}}>
+          <Icon name="palette" size={13} /> カラーテーマ
+        </div>
+        <div style={{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:"1.25rem"}}>
+          {THEMES.map(t => (
+            <div key={t.id} onClick={() => setTheme(t.id)}
+              style={{
+                background:t.bg, border:`2px solid ${t.id===themeId ? t.ac : "transparent"}`,
+                borderRadius:10, padding:"8px 10px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:8,
+                transition:"border-color .15s",
+              }}>
+              <div style={{display:"flex", gap:3}}>
+                <div style={{width:10, height:10, borderRadius:"50%", background:t.bg2}} />
+                <div style={{width:10, height:10, borderRadius:"50%", background:t.ac}} />
+                <div style={{width:10, height:10, borderRadius:"50%", background:t.bg}} />
+              </div>
+              <span style={{fontSize:11, color:t.ac, fontWeight:500}}>{t.name}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 機能表示 */}
+        <div style={{fontSize:12, fontWeight:500, color:"#8aa4c0", marginBottom:8, display:"flex", alignItems:"center", gap:6}}>
+          <Icon name="layout-list" size={13} /> 機能の表示 / 非表示
+          <span style={{fontSize:10, color:"#445566", marginLeft:4}}>taskboard・planner 共通</span>
+        </div>
+        <div style={{display:"flex", flexDirection:"column", gap:4, marginBottom:"1.25rem"}}>
+          {FEATURE_DEFS.map(f => {
+            const enabled = settings[f.key] !== false;
+            return (
+              <div key={f.key} style={{
+                display:"flex", alignItems:"center", justifyContent:"space-between",
+                padding:"7px 10px", background:"#141720", borderRadius:8, fontSize:12
+              }}>
+                <span style={{color:"#8aa4c0", display:"flex", alignItems:"center", gap:6}}>
+                  <Icon name={f.icon} size={13} />
+                  {f.label}
+                </span>
+                <button onClick={() => toggleFeature(f.key)}
+                  style={{
+                    width:34, height:18, borderRadius:9, border:"none", cursor:"pointer",
+                    background: enabled ? "#00b4d8" : "#445566",
+                    position:"relative", transition:"background .2s", flexShrink:0
+                  }}>
+                  <span style={{
+                    position:"absolute", top:2, width:14, height:14, background:"#fff",
+                    borderRadius:"50%", transition:"left .2s",
+                    left: enabled ? 18 : 2,
+                  }} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 注記 */}
+        <p style={{fontSize:11, color:"#445566", marginBottom:"1rem", lineHeight:1.6}}>
+          設定はブラウザに保存されます。taskboard・Day Planner で共有されます。
+        </p>
+
+        {/* アクション */}
+        <div style={{display:"flex", justifyContent:"flex-end", gap:8}}>
+          <button onClick={onClose}
+            style={{padding:"7px 16px", borderRadius:8, background:"none", border:"0.5px solid #2a3040", color:"#8aa4c0", cursor:"pointer", fontSize:13}}>
+            キャンセル
+          </button>
+          <button onClick={handleSave}
+            style={{padding:"7px 16px", borderRadius:8, background:"#00b4d8", border:"none", color:"#fff", cursor:"pointer", fontSize:13, fontWeight:500}}>
+            保存
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const STATUSES = ["Todo", "In Progress", "Waiting", "Done"];
 const PRIORITIES = ["High", "Medium", "Low"];
 const STATUS_LABEL = {"Todo":"未着手", "In Progress":"進行中", "Waiting":"返事待ち", "Done":"完了"};
@@ -1015,6 +1170,13 @@ export default function App() {
   const [syncing,   setSyncing]   = useState(false);
   const [syncError, setSyncError] = useState(null);
   const [showBackup, setShowBackup] = useState(false);
+  const [showSharedSettings, setShowSharedSettings] = useState(false);
+
+  // ── テーマ・共有設定初期適用 ──
+  const [sharedSettings, setSharedSettingsState] = useState(() => loadSharedSettings());
+  useEffect(() => {
+    applyThemeToDocument(sharedSettings.theme || "cyan-dark");
+  }, []);
 
   // ── Undo（削除取り消し）──
   const [undoTask,    setUndoTask]    = useState(null);  // 直前に削除したタスク
@@ -1222,10 +1384,10 @@ export default function App() {
   });
 
   const navItems = [
-    { id:"kanban",    label:"ボード",        icon:"layout-kanban" },
-    { id:"list",      label:"リスト",        icon:"list"          },
-    { id:"dashboard", label:"ダッシュボード", icon:"chart-bar"     },
-  ];
+    { id:"kanban",    label:"ボード",        icon:"layout-kanban", featureKey:null },
+    { id:"list",      label:"リスト",        icon:"list",          featureKey:null },
+    { id:"dashboard", label:"ダッシュボード", icon:"chart-bar",     featureKey:"showDashboard" },
+  ].filter(n => n.featureKey === null || sharedSettings[n.featureKey] !== false);
 
   // ── ログイン確認中 / 未ログイン ───────────────────────────
   if (!authReady || user === undefined) {
@@ -1257,23 +1419,34 @@ export default function App() {
             <span className="hidden sm:inline">{n.label}</span>
           </button>
         ))}
+        {sharedSettings.showPlanner !== false && (
         <a href="/planner.html"
           className="flex h-12 items-center gap-1.5 px-3 text-[13px] border-b-2 ml-0"
           style={{color:"#94a3b8", borderBottomColor:"transparent", borderRadius:0}}>
           <Icon name="calendar-event" size={15} />
           <span className="hidden sm:inline">Day Planner</span>
         </a>
+        )}
         <div className="ml-auto flex items-center gap-3">
           {/* 同期ステータス表示 */}
           <SyncIndicator syncing={syncing} syncError={syncError} />
           {/* ユーザー情報 */}
           <span className="hidden sm:inline text-[11px]" style={{color:"#475569", maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{user?.email}</span>
+          {/* 設定ボタン */}
+          <button onClick={() => setShowSharedSettings(true)}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] transition-colors"
+            style={{background:"#1a1d26", border:"0.5px solid rgba(0,180,216,0.20)", color:"#94a3b8"}}
+            title="設定">
+            <Icon name="settings" size={14} /><span className="hidden sm:inline">設定</span>
+          </button>
           {/* バックアップボタン */}
+          {sharedSettings.showBackupBtn !== false && (
           <button onClick={() => setShowBackup(true)}
             className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] transition-colors"
             style={{background:"#1a1d26", border:"0.5px solid rgba(0,180,216,0.20)", color:"#94a3b8"}}>
             <Icon name="database-export" size={14} /> バックアップ
           </button>
+          )}
           {/* ログアウト */}
           <button onClick={handleSignOut}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] transition-colors"
@@ -1359,7 +1532,12 @@ export default function App() {
         />
       )}
       {/* 付箋パネル */}
-      <StickyPanel user={user} />
+      {sharedSettings.showSticky !== false && <StickyPanel user={user} />}
+      {/* 共有設定モーダル */}
+      {showSharedSettings && <SharedSettingsModal onClose={() => {
+        setShowSharedSettings(false);
+        setSharedSettingsState(loadSharedSettings());
+      }} />}
 
       {/* 削除Undoトースト */}
       {undoVisible && undoTask && (
