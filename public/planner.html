@@ -502,16 +502,16 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
   <span class="nav-logo" style="font-family:'Inter',sans-serif;letter-spacing:-.3px">Task<span>Board</span></span>
   <a href="/" class="nav-link" id="nav-board"><i class="ti ti-layout-kanban"></i> ボード</a>
   <button class="nav-link active" onclick="showPage('planner')"><i class="ti ti-calendar-event"></i> Day Planner</button>
-  <button class="nav-link" onclick="showPage('timer')"><i class="ti ti-clock"></i> タイマー</button>
-  <button class="nav-link" onclick="showPage('log')"><i class="ti ti-notebook"></i> 実績ログ</button>
+  <button class="nav-link" id="nav-btn-timer" onclick="showPage('timer')"><i class="ti ti-clock"></i> タイマー</button>
+  <button class="nav-link" id="nav-btn-log" onclick="showPage('log')"><i class="ti ti-notebook"></i> 実績ログ</button>
   <div class="nav-right" style="gap:8px">
     <span class="nav-ext" id="nav-sync-badge" style="display:none"><i class="ti ti-calendar-check" style="font-size:14px"></i> <span id="nav-sync-text"></span></span>
     <span id="nav-user-email" style="font-size:11px;color:#6b6b8e;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none"></span>
     <button class="backup-btn" onclick="openSettings()" style="font-size:11px" title="設定"><i class="ti ti-settings" style="font-size:13px"></i> 設定</button>
-    <button class="backup-btn" onclick="exportBackup()" style="font-size:11px" title="データをバックアップ"><i class="ti ti-database-export" style="font-size:13px"></i> バックアップ</button>
+    <button class="backup-btn" id="nav-backup-btn" onclick="exportBackup()" style="font-size:11px" title="データをバックアップ"><i class="ti ti-database-export" style="font-size:13px"></i> バックアップ</button>
     <label style="cursor:pointer;margin:0" title="バックアップから復元">
       <input type="file" id="restore-file" accept=".json" onchange="importBackup(this)" style="display:none">
-      <span class="backup-btn" onclick="document.getElementById('restore-file').click()" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;border-radius:var(--r-md);border:0.5px solid var(--border2);cursor:pointer;background:var(--bg);color:var(--text)"><i class="ti ti-database-import" style="font-size:13px"></i> 復元</span>
+      <span class="backup-btn" id="nav-restore-btn" onclick="document.getElementById('restore-file').click()" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;border-radius:var(--r-md);border:0.5px solid var(--border2);cursor:pointer;background:var(--bg);color:var(--text)"><i class="ti ti-database-import" style="font-size:13px"></i> 復元</span>
     </label>
     <button class="backup-btn" id="logout-btn" onclick="handlePlannerSignOut()" style="font-size:11px;display:none" title="ログアウト"><i class="ti ti-logout" style="font-size:13px"></i> ログアウト</button>
   </div>
@@ -1655,24 +1655,21 @@ function applyThemeFromSettings(){
 }
 
 function applyFeatureSettings(){
-  // Day Planner ナビタブ → showPlanner がfalseなら自分自身は消せないが、リダイレクトは不要
-  // タイマーページ
-  const timerBtn = document.querySelector('[onclick*="showPage('timer')"]');
-  if(timerBtn) timerBtn.style.display = sharedSettings.showTimer === false ? 'none' : '';
-  // 実績ログページ
-  const logBtn = document.querySelector('[onclick*="showPage('log')"]');
-  if(logBtn) logBtn.style.display = sharedSettings.showLog === false ? 'none' : '';
-  // 付箋
-  const stickyTab = document.getElementById('sticky-tab');
-  const stickyPanel = document.getElementById('sticky-panel');
-  if(stickyTab) stickyTab.style.display = sharedSettings.showSticky === false ? 'none' : '';
-  if(stickyPanel && sharedSettings.showSticky === false) stickyPanel.classList.remove('open');
-  // バックアップ関連ボタン
-  document.querySelectorAll('.backup-btn').forEach(b=>{
-    if(b.textContent.includes('バックアップ') || b.textContent.includes('復元')){
-      b.style.display = sharedSettings.showBackupBtn === false ? 'none' : '';
-    }
-  });
+  // IDベースで安全に制御
+  const show = (id, visible) => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = visible ? '' : 'none';
+  };
+  const s = sharedSettings;
+  show('nav-btn-timer',   s.showTimer     !== false);
+  show('nav-btn-log',     s.showLog       !== false);
+  show('sticky-tab',      s.showSticky    !== false);
+  show('nav-backup-btn',  s.showBackupBtn !== false);
+  show('nav-restore-btn', s.showBackupBtn !== false);
+  if(s.showSticky === false){
+    const p = document.getElementById('sticky-panel');
+    if(p) p.classList.remove('open');
+  }
 }
 
 // テーマスウォッチグリッドを描画
