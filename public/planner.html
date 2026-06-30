@@ -131,7 +131,7 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 .now-line::before{content:'';position:absolute;left:-5px;top:-3.5px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
 
 /* TIMER */
-.timer-layout{display:grid;grid-template-columns:210px 1fr;gap:1.25rem;align-items:start}
+.timer-layout{display:grid;grid-template-columns:260px 1fr;gap:1.25rem;align-items:start}
 .clock-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
 .elapsed{font-size:26px;font-weight:500;letter-spacing:.04em;text-align:center}
 .elapsed.over{color:var(--red);animation:bl .7s ease-in-out infinite}
@@ -155,7 +155,7 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 .ni-d{font-size:11px;color:var(--text2);flex-shrink:0}
 
 /* SIDEBAR */
-.layout-2col{display:grid;grid-template-columns:200px 1fr;gap:14px;align-items:start}
+.layout-2col{display:grid;grid-template-columns:260px 1fr;gap:14px;align-items:start}
 .sidebar-card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--r-lg);padding:10px 12px;margin-bottom:10px}
 .mini-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
 .mc-dow{font-size:10px;color:var(--text3);text-align:center;padding:2px 0}
@@ -506,7 +506,7 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:3px}
 <div id="page-timer" class="page">
   <div class="timer-layout">
     <div class="clock-wrap">
-      <canvas id="cv" width="200" height="200" aria-label="タイムタイマー"></canvas>
+      <canvas id="cv" width="260" height="260" aria-label="タイムタイマー"></canvas>
       <div class="elapsed" id="elapsed">--:--</div>
       <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:-6px" id="elapsed-label">現在時刻</div>
       <span class="pill pill-idle" id="timer-pill"><i class="ti ti-minus" style="font-size:11px"></i> 待機中</span>
@@ -1109,14 +1109,14 @@ function updateClock(){
   const lbl=document.getElementById('elapsed-label');
   const now=new Date();
   const jst=new Date(now.toLocaleString('en-US',{timeZone:'Asia/Tokyo'}));
-  el.textContent=pad(jst.getHours())+':'+pad(jst.getMinutes())+':'+pad(jst.getSeconds());
+  el.textContent=pad(jst.getHours())+':'+pad(jst.getMinutes());
   el.className='elapsed';
-  lbl.textContent='現在時刻（JST）';
+  lbl.textContent='現在時刻';
 }
 function drawTimer(frac){
   const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
-  const cx=100,cy=100,R=90,Ri=52;
-  ctx.clearRect(0,0,200,200);
+  const cx=130,cy=130,R=117,Ri=67;
+  ctx.clearRect(0,0,260,260);
   const dk=window.matchMedia('(prefers-color-scheme:dark)').matches;
   const fc=dk?'#2C2C2A':'#F1EFE8',rc=dk?'#5F5E5A':'#B4B2A9',tc=dk?'#888780':'#888780',lc=dk?'#B4B2A9':'#5F5E5A';
   ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=fc;ctx.fill();ctx.strokeStyle=rc;ctx.lineWidth=2;ctx.stroke();
@@ -1125,7 +1125,7 @@ function drawTimer(frac){
     ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*(R-(maj?13:7)),cy+Math.sin(a)*(R-(maj?13:7)));ctx.lineTo(cx+Math.cos(a)*(R-2),cy+Math.sin(a)*(R-2));
     ctx.strokeStyle=maj?tc:(dk?'#5F5E5A':'#C4C2B9');ctx.lineWidth=maj?1.8:.7;ctx.stroke();
   }
-  for(let n=1;n<=12;n++){const a=(n/12)*Math.PI*2-Math.PI/2;ctx.fillStyle=lc;ctx.font='500 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n*5,cx+Math.cos(a)*(R-25),cy+Math.sin(a)*(R-25));}
+  for(let n=1;n<=12;n++){const a=(n/12)*Math.PI*2-Math.PI/2;ctx.fillStyle=lc;ctx.font='500 13px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n*5,cx+Math.cos(a)*(R-25),cy+Math.sin(a)*(R-25));}
   const f=Math.max(0,Math.min(1,frac));
   if(f>0){
     const remMin=(tSetMin*60*f)/60;
@@ -1141,8 +1141,8 @@ function drawTimer(frac){
   }
   ctx.beginPath();ctx.arc(cx,cy,Ri,0,Math.PI*2);ctx.fillStyle=fc;ctx.fill();ctx.strokeStyle=dk?'#444441':'#D3D1C7';ctx.lineWidth=1;ctx.stroke();
   ctx.fillStyle=lc;ctx.textAlign='center';ctx.textBaseline='middle';
-  if(tState==='idle'||tState==='done'){ctx.font='500 14px sans-serif';ctx.fillText(tSetMin+'分',cx,cy);}
-  else{const rem=Math.max(0,tSetMin*60-tElSec);ctx.font='500 17px sans-serif';ctx.fillText(Math.floor(rem/60)+':'+pad(Math.floor(rem%60)),cx,cy-7);ctx.font='400 10px sans-serif';ctx.fillText('残り',cx,cy+10);}
+  if(tState==='idle'||tState==='done'){ctx.font='bold 18px sans-serif';ctx.fillText(tSetMin+'分',cx,cy);}
+  else{const rem=Math.max(0,tSetMin*60-tElSec);const rm=Math.floor(rem/60),rs=Math.floor(rem%60);ctx.font='bold 22px monospace';ctx.fillText(pad(rm)+':'+pad(rs),cx,cy);}
 }
 function setPill(s){
   const el=document.getElementById('timer-pill');
