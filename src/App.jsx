@@ -186,10 +186,10 @@ const STA = {
 const genId = () => `t-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
 
 const DEFAULTS = [
-  { id: genId(), title: "UIデザインのレビュー",    description: "カラーパレットとフォントの確認", status: "Todo",        priority: "High",   dueDate: "", estHours: 2, actHours: 0, order: 0, createdAt: Date.now() - 86400000*2 },
-  { id: genId(), title: "APIエンドポイントの実装", description: "RESTful APIの設計と実装",      status: "In Progress", priority: "High",   dueDate: "", estHours: 4, actHours: 2, order: 1, createdAt: Date.now() - 86400000 },
-  { id: genId(), title: "ユーザーテストの実施",    description: "5名のユーザーにヒアリング",    status: "In Progress", priority: "Medium", dueDate: "", estHours: 3, actHours: 0, order: 2, createdAt: Date.now() - 86400000 },
-  { id: genId(), title: "ドキュメントの整備",      description: "README と API仕様書の更新",   status: "Done",        priority: "Low",    dueDate: "", estHours: 2, actHours: 2, order: 3, createdAt: Date.now() - 86400000*3 },
+  { id: genId(), title: "UIデザインのレビュー",    description: "カラーパレットとフォントの確認", status: "Todo",        priority: "High",   dueDate: "", estHours: 2, actHours: 0, order: 0, archived: false, createdAt: Date.now() - 86400000*2 },
+  { id: genId(), title: "APIエンドポイントの実装", description: "RESTful APIの設計と実装",      status: "In Progress", priority: "High",   dueDate: "", estHours: 4, actHours: 2, order: 1, archived: false, createdAt: Date.now() - 86400000 },
+  { id: genId(), title: "ユーザーテストの実施",    description: "5名のユーザーにヒアリング",    status: "In Progress", priority: "Medium", dueDate: "", estHours: 3, actHours: 0, order: 2, archived: false, createdAt: Date.now() - 86400000 },
+  { id: genId(), title: "ドキュメントの整備",      description: "README と API仕様書の更新",   status: "Done",        priority: "Low",    dueDate: "", estHours: 2, actHours: 2, order: 3, archived: false, createdAt: Date.now() - 86400000*3 },
 ];
 
 // ===== SUPABASE ヘルパー =====
@@ -204,6 +204,7 @@ const fromDbTask = r => ({
   estHours:    r.est_hours   ?? 0,
   actHours:    r.act_hours   ?? 0,
   order:       r.order_index ?? 0,
+  archived:    r.archived    ?? false,
   createdAt:   r.created_at  ?? Date.now(),
   updatedAt:   r.updated_at  ?? Date.now(),
 });
@@ -219,6 +220,7 @@ const toDbTask = t => ({
   est_hours:   parseFloat(t.estHours)  || 0,
   act_hours:   parseFloat(t.actHours)  || 0,
   order_index: t.order       ?? 0,
+  archived:    t.archived    ?? false,
   created_at:  t.createdAt   ?? Date.now(),
   updated_at:  Date.now(),
 });
@@ -567,53 +569,59 @@ function DatePicker({ value, onChange }) {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   return (
-    <div className="relative" ref={ref}>
+    <div ref={ref}>
       <button type="button" onClick={() => setOpen(o => !o)}
         className="flex w-full items-center justify-between rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2.5 text-[14px] text-[#e2e8f0] outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30">
         <span className={value ? "" : "text-[#475569]"}>{value || "日付を選択"}</span>
         <Icon name="calendar" size={17} className="text-[#94a3b8]" />
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-72 rounded-xl border border-cyan-500/20 bg-[#141720] p-3 shadow-2xl">
-          <div className="mb-2 flex items-center justify-between">
-            <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))}
-              className="rounded-lg p-1.5 text-[#94a3b8] hover:bg-[#1a1d26] hover:text-[#e2e8f0]">
-              <Icon name="chevron-left" size={16} />
-            </button>
-            <span className="text-[13px] font-medium text-[#e2e8f0]">{year}年{month + 1}月</span>
-            <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))}
-              className="rounded-lg p-1.5 text-[#94a3b8] hover:bg-[#1a1d26] hover:text-[#e2e8f0]">
-              <Icon name="chevron-right" size={16} />
-            </button>
-          </div>
-          <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] text-[#64748b]">
-            {["日", "月", "火", "水", "木", "金", "土"].map(d => <div key={d}>{d}</div>)}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((d, i) => {
-              if (d === null) return <div key={i} />;
-              const dateStr = fmt(year, month, d);
-              const isSelected = dateStr === value;
-              const isToday = dateStr === todayStr;
-              return (
-                <button type="button" key={i}
-                  onClick={() => { onChange(dateStr); setOpen(false); }}
-                  className={`h-8 w-8 rounded-md text-[12px] transition-colors ${
-                    isSelected ? "bg-[#00b4d8] text-white"
-                    : isToday ? "border border-cyan-400/50 text-[#e2e8f0]"
-                    : "text-[#cbd5e1] hover:bg-[#1a1d26]"}`}>
-                  {d}
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => { onChange(fmt(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())); setOpen(false); }}
-              className="flex-1 rounded-md border border-cyan-500/20 py-1.5 text-[11px] text-[#94a3b8] hover:bg-[#1a1d26]">今日</button>
-            {value && (
-              <button type="button" onClick={() => { onChange(""); setOpen(false); }}
-                className="flex-1 rounded-md border border-cyan-500/20 py-1.5 text-[11px] text-[#94a3b8] hover:bg-[#1a1d26]">クリア</button>
-            )}
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" onClick={() => setOpen(false)}>
+          <div className="w-72 rounded-xl border border-cyan-500/20 bg-[#141720] p-3 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between">
+              <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))}
+                className="rounded-lg p-1.5 text-[#94a3b8] hover:bg-[#1a1d26] hover:text-[#e2e8f0]">
+                <Icon name="chevron-left" size={16} />
+              </button>
+              <span className="text-[13px] font-medium text-[#e2e8f0]">{year}年{month + 1}月</span>
+              <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))}
+                className="rounded-lg p-1.5 text-[#94a3b8] hover:bg-[#1a1d26] hover:text-[#e2e8f0]">
+                <Icon name="chevron-right" size={16} />
+              </button>
+              <button type="button" onClick={() => setOpen(false)}
+                className="ml-1 rounded-lg p-1.5 text-[#94a3b8] hover:bg-[#1a1d26] hover:text-[#e2e8f0]">
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+            <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] text-[#64748b]">
+              {["日", "月", "火", "水", "木", "金", "土"].map(d => <div key={d}>{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {cells.map((d, i) => {
+                if (d === null) return <div key={i} />;
+                const dateStr = fmt(year, month, d);
+                const isSelected = dateStr === value;
+                const isToday = dateStr === todayStr;
+                return (
+                  <button type="button" key={i}
+                    onClick={() => { onChange(dateStr); setOpen(false); }}
+                    className={`h-9 w-9 rounded-md text-[13px] transition-colors ${
+                      isSelected ? "bg-[#00b4d8] text-white"
+                      : isToday ? "border border-cyan-400/50 text-[#e2e8f0]"
+                      : "text-[#cbd5e1] hover:bg-[#1a1d26]"}`}>
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <button type="button" onClick={() => { onChange(fmt(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())); setOpen(false); }}
+                className="flex-1 rounded-md border border-cyan-500/20 py-1.5 text-[11px] text-[#94a3b8] hover:bg-[#1a1d26]">今日</button>
+              {value && (
+                <button type="button" onClick={() => { onChange(""); setOpen(false); }}
+                  className="flex-1 rounded-md border border-cyan-500/20 py-1.5 text-[11px] text-[#94a3b8] hover:bg-[#1a1d26]">クリア</button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1227,6 +1235,108 @@ function BackupModal({ tasks, onRestore, onClose }) {
   );
 }
 
+// ===== CLEANUP MODAL（完了タスクの整理：アーカイブ/削除）=====
+function CleanupModal({ tasks, onArchive, onRestore, onDelete, onClose }) {
+  const [tab, setTab] = useState("pending"); // "pending" | "archived"
+  const [selected, setSelected] = useState(() => new Set());
+
+  const pending  = tasks.filter(t => t.status === "Done" && !t.archived);
+  const archived = tasks.filter(t => t.archived);
+  const list = tab === "pending" ? pending : archived;
+
+  useEffect(() => { setSelected(new Set()); }, [tab]);
+
+  const toggle = (id) => setSelected(s => {
+    const n = new Set(s);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+  const toggleAll = () => setSelected(s => s.size === list.length ? new Set() : new Set(list.map(t => t.id)));
+
+  const handleDelete = () => {
+    if (!selected.size) return;
+    const label = tab === "pending" ? "削除" : "完全に削除";
+    if (window.confirm(`選択した${selected.size}件を${label}します。よろしいですか？`)) {
+      onDelete([...selected]);
+      setSelected(new Set());
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-cyan-500/20 bg-[#141720] shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-cyan-500/10 px-5 py-4">
+          <h2 className="text-[15px] font-semibold text-[#e2e8f0]">完了タスクの整理</h2>
+          <button onClick={onClose} className="rounded p-1 text-[#94a3b8] hover:bg-[#1a1d26] hover:text-[#e2e8f0]">
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+
+        <div className="flex gap-2 px-5 pt-3">
+          <button onClick={() => setTab("pending")}
+            className={`rounded-lg px-3 py-1.5 text-[12px] border ${tab==="pending" ? "bg-[#002a36] text-[#48cae4] border-cyan-500/40" : "bg-[#1a1d26] text-[#94a3b8] border-cyan-500/10"}`}>
+            未整理の完了タスク（{pending.length}）
+          </button>
+          <button onClick={() => setTab("archived")}
+            className={`rounded-lg px-3 py-1.5 text-[12px] border ${tab==="archived" ? "bg-[#002a36] text-[#48cae4] border-cyan-500/40" : "bg-[#1a1d26] text-[#94a3b8] border-cyan-500/10"}`}>
+            アーカイブ済み（{archived.length}）
+          </button>
+        </div>
+
+        <p className="px-5 pt-3 text-[11px] text-[#475569]">
+          {tab === "pending"
+            ? "完了にしたタスクのうち、まだアーカイブ・削除の判断をしていないものです。"
+            : "アーカイブされたタスクです。ボードには表示されません。"}
+        </p>
+
+        <div className="flex-1 overflow-y-auto px-5 py-3">
+          {list.length === 0 ? (
+            <div className="py-10 text-center text-[13px] text-[#475569]">
+              <Icon name="inbox" size={28} className="mx-auto mb-2 opacity-40" />
+              {tab === "pending" ? "整理が必要な完了タスクはありません" : "アーカイブ済みタスクはありません"}
+            </div>
+          ) : (
+            <>
+              <label className="mb-2 flex items-center gap-2 text-[12px] text-[#94a3b8]">
+                <input type="checkbox" checked={selected.size === list.length} onChange={toggleAll} />
+                すべて選択（{list.length}件）
+              </label>
+              <div className="space-y-1.5">
+                {list.map(t => (
+                  <label key={t.id} className="flex items-center gap-2 rounded-lg border border-cyan-500/10 bg-[#1a1d26] px-3 py-2 cursor-pointer">
+                    <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggle(t.id)} />
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-[#e2e8f0]">{t.title}</span>
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium ${PRI[t.priority]?.badge || ""}`}>{PRI_LABEL[t.priority] || t.priority}</span>
+                    {t.dueDate && <span className="shrink-0 text-[10px] text-[#475569]">{t.dueDate}</span>}
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-cyan-500/10 px-5 py-4">
+          <button disabled={!selected.size} onClick={handleDelete}
+            className="rounded-lg border border-red-500/30 px-4 py-2 text-[13px] text-red-300 hover:bg-red-950/30 disabled:opacity-40 disabled:cursor-not-allowed">
+            {tab === "pending" ? "選択を削除" : "完全に削除"}
+          </button>
+          {tab === "pending" ? (
+            <button disabled={!selected.size} onClick={() => { onArchive([...selected]); setSelected(new Set()); }}
+              className="rounded-lg bg-[#00b4d8] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0096b4] disabled:opacity-40 disabled:cursor-not-allowed">
+              選択をアーカイブ
+            </button>
+          ) : (
+            <button disabled={!selected.size} onClick={() => { onRestore([...selected]); setSelected(new Set()); }}
+              className="rounded-lg bg-[#00b4d8] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0096b4] disabled:opacity-40 disabled:cursor-not-allowed">
+              復元
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ===== MAIN APP =====
 export default function App() {
   // ── 認証状態 ──────────────────────────────────────────────
@@ -1258,6 +1368,8 @@ export default function App() {
   const [syncError, setSyncError] = useState(null);
   const [showBackup, setShowBackup] = useState(false);
   const [showSharedSettings, setShowSharedSettings] = useState(false);
+  const [doneChoice,  setDoneChoice]  = useState(null); // 完了に変更された直後のタスク（アーカイブ/削除を選ぶトースト）
+  const [showCleanup, setShowCleanup] = useState(false); // 完了タスク整理モーダル
 
   // ── テーマ・共有設定初期適用 ──
   const [sharedSettings, setSharedSettingsState] = useState(() => loadSharedSettings());
@@ -1345,11 +1457,20 @@ export default function App() {
   }, []);
 
   // ── タスク操作 ─────────────────────────────────────────────
+  // 完了への変更を検知して、アーカイブ/削除の選択トーストを出す
+  const checkDoneTransition = (id, prevStatus, newStatus, title) => {
+    if (newStatus === "Done" && prevStatus !== "Done" && id) {
+      setDoneChoice({ id, title: title || "" });
+    }
+  };
+
   const save = t => {
+    const existing = t.id ? tasks.find(x => x.id === t.id) : null;
     setTasks(ts => t.id && ts.find(x => x.id === t.id)
       ? ts.map(x => x.id === t.id ? { ...t, updatedAt: Date.now() } : x)
-      : [...ts, { ...t, id: genId(), order: ts.length, createdAt: Date.now(), updatedAt: Date.now() }]);
+      : [...ts, { ...t, id: genId(), order: ts.length, archived: false, createdAt: Date.now(), updatedAt: Date.now() }]);
     setModal(null);
+    if (existing) checkDoneTransition(existing.id, existing.status, t.status, t.title);
   };
 
   const del = id => {
@@ -1369,6 +1490,22 @@ export default function App() {
     }, 6000); // 6秒以内なら元に戻せる
   };
 
+  // ── 完了タスクのアーカイブ / 復元 / 一括削除 ──
+  const archiveTasks = (ids) => {
+    const idSet = new Set(ids);
+    setTasks(ts => ts.map(t => idSet.has(t.id) ? { ...t, archived: true, updatedAt: Date.now() } : t));
+  };
+
+  const restoreTasks = (ids) => {
+    const idSet = new Set(ids);
+    setTasks(ts => ts.map(t => idSet.has(t.id) ? { ...t, archived: false, updatedAt: Date.now() } : t));
+  };
+
+  const deleteTasksBulk = (ids) => {
+    ids.forEach(id => delFromSupabase(id));
+    setTasks(ts => ts.filter(t => !ids.includes(t.id)));
+  };
+
   const handleUndo = () => {
     if (!undoTask) return;
     // タスクを復元
@@ -1383,6 +1520,7 @@ export default function App() {
 
   // ── ステータス変更を伴う移動（列またぎ） ──
   const move = (id, status, targetId, pos) => {
+    const prevTask = tasks.find(t => t.id === id);
     setTasks(ts => {
       // 移動先ステータスのタスク一覧（移動元タスクは除外）
       const destTasks = ts
@@ -1412,6 +1550,7 @@ export default function App() {
         return t;
       });
     });
+    checkDoneTransition(id, prevTask?.status, status, prevTask?.title);
   };
 
   // ── 同ステータス内の並び替え（グループ内・列またぎ含む） ──
@@ -1455,7 +1594,9 @@ export default function App() {
   };
 
   const statusChange = (id, status) => {
+    const prevTask = tasks.find(t => t.id === id);
     setTasks(ts => ts.map(t => t.id===id ? {...t, status, updatedAt: Date.now()} : t));
+    checkDoneTransition(id, prevTask?.status, status, prevTask?.title);
   };
 
   const toggleSort = key => {
@@ -1465,7 +1606,8 @@ export default function App() {
 
   const filtered = tasks.filter(t => {
     const q = search.toLowerCase();
-    return (!q || t.title.toLowerCase().includes(q) || (t.description||"").toLowerCase().includes(q))
+    return !t.archived
+      && (!q || t.title.toLowerCase().includes(q) || (t.description||"").toLowerCase().includes(q))
       && (!filterStatus || t.status === filterStatus)
       && (!filterPri || t.priority === filterPri);
   });
@@ -1525,6 +1667,17 @@ export default function App() {
             style={{background:"#1a1d26", border:"0.5px solid rgba(0,180,216,0.20)", color:"#94a3b8"}}
             title="設定">
             <Icon name="settings" size={14} /><span className="hidden sm:inline">設定</span>
+          </button>
+          {/* 完了タスクの整理ボタン */}
+          <button onClick={() => setShowCleanup(true)}
+            className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] transition-colors relative"
+            style={{background:"#1a1d26", border:"0.5px solid rgba(0,180,216,0.20)", color:"#94a3b8"}}>
+            <Icon name="archive" size={14} /> 整理
+            {tasks.filter(t => t.status === "Done" && !t.archived).length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-semibold text-white">
+                {tasks.filter(t => t.status === "Done" && !t.archived).length}
+              </span>
+            )}
           </button>
           {/* バックアップボタン */}
           {sharedSettings.showBackupBtn !== false && (
@@ -1604,7 +1757,7 @@ export default function App() {
       <main className="p-4">
         {view === "kanban"    && <KanbanView    tasks={filtered} onEdit={t => setModal(t)} onDelete={del} onMove={move} onReorder={reorder} sortKey={sortKey} sortDir={sortDir} />}
         {view === "list"      && <ListView      tasks={filtered} onEdit={t => setModal(t)} onDelete={del} onStatusChange={statusChange} />}
-        {view === "dashboard" && <Dashboard     tasks={tasks} />}
+        {view === "dashboard" && <Dashboard     tasks={tasks.filter(t => !t.archived)} />}
       </main>
 
       {modal !== null && <Modal task={Object.keys(modal).length ? modal : null} onSave={save} onClose={() => setModal(null)} />}
@@ -1616,6 +1769,15 @@ export default function App() {
             setShowBackup(false);
           }}
           onClose={() => setShowBackup(false)}
+        />
+      )}
+      {showCleanup && (
+        <CleanupModal
+          tasks={tasks}
+          onArchive={archiveTasks}
+          onRestore={restoreTasks}
+          onDelete={deleteTasksBulk}
+          onClose={() => setShowCleanup(false)}
         />
       )}
       {/* 付箋パネル */}
@@ -1653,6 +1815,37 @@ export default function App() {
         </div>
       )}
       <style>{`@keyframes slideUp { from { opacity:0; transform:translateX(-50%) translateY(12px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
+
+      {/* 完了→アーカイブ/削除選択トースト */}
+      {doneChoice && (
+        <div style={{
+          position:"fixed", bottom: undoVisible && undoTask ? 92 : 28, left:"50%", transform:"translateX(-50%)",
+          background:"#1a1d26", border:"0.5px solid rgba(16,185,129,0.35)",
+          borderRadius:10, padding:"10px 16px",
+          display:"flex", alignItems:"center", gap:10,
+          boxShadow:"0 4px 24px rgba(0,0,0,0.5)",
+          zIndex:2000, whiteSpace:"nowrap",
+          animation:"slideUp 0.2s ease",
+        }}>
+          <Icon name="circle-check" size={15} className="text-emerald-400" />
+          <span style={{fontSize:13, color:"#e2e8f0"}}>
+            「{doneChoice.title.length > 16 ? doneChoice.title.slice(0,16)+"…" : doneChoice.title}」を完了にしました
+          </span>
+          <button onClick={() => { archiveTasks([doneChoice.id]); setDoneChoice(null); }} style={{
+            padding:"4px 12px", borderRadius:6,
+            background:"rgba(0,180,216,0.15)", border:"0.5px solid rgba(0,180,216,0.4)",
+            color:"#48cae4", fontSize:12, fontWeight:500, cursor:"pointer",
+          }}>アーカイブ</button>
+          <button onClick={() => { del(doneChoice.id); setDoneChoice(null); }} style={{
+            padding:"4px 12px", borderRadius:6,
+            background:"rgba(239,68,68,0.15)", border:"0.5px solid rgba(239,68,68,0.4)",
+            color:"#f87171", fontSize:12, fontWeight:500, cursor:"pointer",
+          }}>削除</button>
+          <button onClick={() => setDoneChoice(null)} style={{
+            background:"none", border:"none", color:"#94a3b8", cursor:"pointer", fontSize:12,
+          }}>あとで</button>
+        </div>
+      )}
     </div>
   );
 }
