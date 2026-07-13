@@ -689,7 +689,7 @@ function Modal({ task, onSave, onClose }) {
 }
 
 // ===== TASK CARD (コンパクト版) =====
-function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnd, isDragging }) {
+function TaskCard({ task, num, onEdit, onDelete, onDragStart, onDragEnd, isDragging }) {
   const overdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "Done";
   return (
     <div
@@ -704,9 +704,16 @@ function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnd, isDragging }
         ${isDragging ? "opacity-40 scale-95" : "opacity-100"}`}
     >
       <div className="flex items-start justify-between gap-1 mb-1">
-        <p className={`text-[12px] font-medium leading-snug flex-1 min-w-0 ${task.status === "Done" ? "line-through text-[#475569]" : "text-[#e2e8f0]"}`}>
-          {task.title}
-        </p>
+        <div className="flex min-w-0 flex-1 items-start gap-1.5">
+          {num != null && (
+            <span className="mt-[1px] flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[#1a1d26] border border-cyan-500/20 text-[9px] font-semibold text-[#48cae4]">
+              {num}
+            </span>
+          )}
+          <p className={`text-[12px] font-medium leading-snug min-w-0 flex-1 ${task.status === "Done" ? "line-through text-[#475569]" : "text-[#e2e8f0]"}`}>
+            {task.title}
+          </p>
+        </div>
         <button onClick={e => { e.stopPropagation(); onDelete(task.id); }}
           className="hidden shrink-0 rounded p-0.5 text-[#475569] hover:bg-red-950/50 hover:text-red-400 group-hover:flex">
           <Icon name="trash" size={11} />
@@ -775,7 +782,7 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
   };
 
   // カード列（全列ドロップ受付）
-  const renderCardCol = (st, taskList) => {
+  const renderCardCol = (st, taskList, startIndex = 0) => {
     const col = STA[st];
     return (
       <div
@@ -784,7 +791,7 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
         onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(null); }}
         onDrop={e => handleDrop(e, st, null)}
       >
-        {taskList.map(t => {
+        {taskList.map((t, i) => {
           const isOver = overInfo && overInfo.cardId === t.id && draggingId !== t.id;
           return (
             <div key={t.id}
@@ -796,7 +803,7 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
               onDragLeave={e => { if(!e.currentTarget.contains(e.relatedTarget)) setOverInfo(o => o?.cardId===t.id ? null : o); }}
               onDrop={e => handleDrop(e, st, t.id)}
             >
-              <TaskCard task={t} onEdit={onEdit} onDelete={onDelete}
+              <TaskCard task={t} num={startIndex + i + 1} onEdit={onEdit} onDelete={onDelete}
                 onDragStart={id => setDraggingId(id)}
                 onDragEnd={() => { setDraggingId(null); setOverInfo(null); }}
                 isDragging={draggingId === t.id} />
@@ -845,14 +852,14 @@ function KanbanView({ tasks, onEdit, onDelete, onMove, onReorder, sortKey, sortD
         <GroupHeader st="Waiting"     span={1} />
         <GroupHeader st="Done"        span={1} />
         {/* 未着手：1列目（1〜10件）/ 2列目（11件〜、20超えは下に伸びる） */}
-        {renderCardCol("Todo", todoCol1)}
-        {renderCardCol("Todo", todoCol2)}
+        {renderCardCol("Todo", todoCol1, 0)}
+        {renderCardCol("Todo", todoCol2, todoCol1.length)}
         {/* 進行中：1列目（1〜10件）/ 2列目（11件〜、20超えは下に伸びる） */}
-        {renderCardCol("In Progress", ipCol1)}
-        {renderCardCol("In Progress", ipCol2)}
+        {renderCardCol("In Progress", ipCol1, 0)}
+        {renderCardCol("In Progress", ipCol2, ipCol1.length)}
         {/* 返事待ち・完了 */}
-        {renderCardCol("Waiting", waitTasks)}
-        {renderCardCol("Done",    doneTasks)}
+        {renderCardCol("Waiting", waitTasks, 0)}
+        {renderCardCol("Done",    doneTasks, 0)}
       </div>
     );
   };
