@@ -335,7 +335,7 @@ function StickyPanel({ user }) {
     const ch = supabase.channel("sticky-"+user.id)
       .on("postgres_changes", { event:"*", schema:"public", table:"sticky_notes", filter:`user_id=eq.${user.id}` },
         payload => {
-          if (payload.eventType === "INSERT") setNotes(p => [payload.new, ...p]);
+          if (payload.eventType === "INSERT") setNotes(p => p.some(n => n.id === payload.new.id) ? p : [payload.new, ...p]);
           else if (payload.eventType === "DELETE") setNotes(p => p.filter(n => n.id !== payload.old.id));
           else if (payload.eventType === "UPDATE") setNotes(p => p.map(n => n.id===payload.new.id ? payload.new : n));
         })
@@ -377,7 +377,7 @@ function StickyPanel({ user }) {
     };
     if (supabase) {
       const { data } = await supabase.from("sticky_notes").insert(row).select().single();
-      if (data) setNotes(p => [data, ...p]);
+      if (data) setNotes(p => p.some(n => n.id === data.id) ? p : [data, ...p]);
     } else {
       setNotes(p => [{...row, id: Date.now().toString(), created_at: new Date().toISOString()}, ...p]);
     }
