@@ -540,29 +540,110 @@ function SyncIndicator({ syncing, syncError }) {
   );
 }
 
+// ===== カレンダー形式の日付ピッカー =====
+function DatePicker({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [viewDate, setViewDate] = useState(() => {
+    if (value) { const d = new Date(value + "T00:00:00"); if (!isNaN(d)) return d; }
+    return new Date();
+  });
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const fmt = (y, m, d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="flex w-full items-center justify-between rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2.5 text-[14px] text-[#e2e8f0] outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30">
+        <span className={value ? "" : "text-[#475569]"}>{value || "日付を選択"}</span>
+        <Icon name="calendar" size={17} className="text-[#94a3b8]" />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-72 rounded-xl border border-cyan-500/20 bg-[#141720] p-3 shadow-2xl">
+          <div className="mb-2 flex items-center justify-between">
+            <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))}
+              className="rounded-lg p-1.5 text-[#94a3b8] hover:bg-[#1a1d26] hover:text-[#e2e8f0]">
+              <Icon name="chevron-left" size={16} />
+            </button>
+            <span className="text-[13px] font-medium text-[#e2e8f0]">{year}年{month + 1}月</span>
+            <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))}
+              className="rounded-lg p-1.5 text-[#94a3b8] hover:bg-[#1a1d26] hover:text-[#e2e8f0]">
+              <Icon name="chevron-right" size={16} />
+            </button>
+          </div>
+          <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] text-[#64748b]">
+            {["日", "月", "火", "水", "木", "金", "土"].map(d => <div key={d}>{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((d, i) => {
+              if (d === null) return <div key={i} />;
+              const dateStr = fmt(year, month, d);
+              const isSelected = dateStr === value;
+              const isToday = dateStr === todayStr;
+              return (
+                <button type="button" key={i}
+                  onClick={() => { onChange(dateStr); setOpen(false); }}
+                  className={`h-8 w-8 rounded-md text-[12px] transition-colors ${
+                    isSelected ? "bg-[#00b4d8] text-white"
+                    : isToday ? "border border-cyan-400/50 text-[#e2e8f0]"
+                    : "text-[#cbd5e1] hover:bg-[#1a1d26]"}`}>
+                  {d}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button type="button" onClick={() => { onChange(fmt(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())); setOpen(false); }}
+              className="flex-1 rounded-md border border-cyan-500/20 py-1.5 text-[11px] text-[#94a3b8] hover:bg-[#1a1d26]">今日</button>
+            {value && (
+              <button type="button" onClick={() => { onChange(""); setOpen(false); }}
+                className="flex-1 rounded-md border border-cyan-500/20 py-1.5 text-[11px] text-[#94a3b8] hover:bg-[#1a1d26]">クリア</button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ===== MODAL =====
 function Modal({ task, onSave, onClose }) {
   const [form, setForm] = useState(task || { title:"", description:"", status:"Todo", priority:"Medium", dueDate:"", estHours:"", actHours:"" });
   const up = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-xl border border-cyan-500/20 bg-[#141720] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-[#e2e8f0]">{task ? "タスクを編集" : "タスクを追加"}</h2>
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-cyan-500/20 bg-[#141720] shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-cyan-500/10 px-6 py-4">
+          <h2 className="text-[16px] font-semibold text-[#e2e8f0]">{task ? "タスクを編集" : "タスクを追加"}</h2>
           <button onClick={onClose} className="rounded-lg p-1 text-[#94a3b8] hover:bg-[#1a1d26] hover:text-[#e2e8f0]">
-            <Icon name="x" size={18} />
+            <Icon name="x" size={20} />
           </button>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-4 overflow-y-auto px-6 py-5">
           <div>
-            <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">タイトル</label>
+            <label className="mb-1 block text-[12px] font-medium text-[#94a3b8]">タイトル</label>
             <input value={form.title} onChange={up("title")} placeholder="タスク名を入力"
-              className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2 text-[13px] text-[#e2e8f0] placeholder-[#475569] outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30" />
+              className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2.5 text-[14px] text-[#e2e8f0] placeholder-[#475569] outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30" />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">詳細</label>
-            <textarea value={form.description} onChange={up("description")} rows={3} placeholder="詳細・メモ"
-              className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2 text-[13px] text-[#e2e8f0] placeholder-[#475569] outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30 resize-none" />
+            <label className="mb-1 block text-[12px] font-medium text-[#94a3b8]">詳細</label>
+            <textarea value={form.description} onChange={up("description")} rows={7} placeholder="詳細・メモ"
+              className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2.5 text-[14px] text-[#e2e8f0] placeholder-[#475569] outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30 resize-y" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -583,8 +664,7 @@ function Modal({ task, onSave, onClose }) {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">期日</label>
-              <input type="date" value={form.dueDate} onChange={up("dueDate")}
-                className="w-full rounded-lg border border-cyan-500/20 bg-[#1a1d26] px-3 py-2 text-[13px] text-[#e2e8f0] outline-none focus:border-cyan-400/50" />
+              <DatePicker value={form.dueDate} onChange={d => setForm(f => ({ ...f, dueDate: d }))} />
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-medium text-[#94a3b8]">見積(h)</label>
@@ -598,7 +678,7 @@ function Modal({ task, onSave, onClose }) {
             </div>
           </div>
         </div>
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="flex justify-end gap-2 border-t border-cyan-500/10 px-6 py-4">
           <button onClick={onClose} className="rounded-lg border border-cyan-500/20 px-4 py-2 text-[13px] text-[#94a3b8] hover:bg-[#1a1d26]">キャンセル</button>
           <button onClick={() => { if(form.title.trim()) onSave(form); }}
             className="rounded-lg bg-[#00b4d8] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0096b4]">保存</button>
